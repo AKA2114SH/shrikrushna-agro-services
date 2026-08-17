@@ -6,26 +6,19 @@ const isGithubPages =
 
 const nextConfig = {
   reactStrictMode: true,
-
   poweredByHeader: false,
-
-  trailingSlash: isGithubPages,
-
+  trailingSlash: isGithubPages ? true : false,
   output: isGithubPages ? 'export' : undefined,
-
   ...(isGithubPages && {
     basePath: '/shrikrushna-agro-services',
     assetPrefix: '/shrikrushna-agro-services/',
   }),
-
   images: {
     unoptimized: true,
   },
-
   eslint: {
     ignoreDuringBuilds: true,
   },
-
   typescript: {
     ignoreBuildErrors: true,
   },
