@@ -2,7 +2,9 @@
 ### Digital Business Operating System & Agricultural ERP Platform
 **Location**: Sinnar, District Nashik, Maharashtra, India (PIN: 422103)  
 **Lead Solutions Architect**: Akash Khatale (Mo. `+91 9373873065`, Email: `akashkhatale2114@gmail.com`)  
-**Verified Agronomists**: Shubham Gamane (B.Sc Agri — `8605620843`) & Jagdish Bodke (B.Sc Agri — `8888474456`)
+**Verified Agronomists**: Shubham Gamane (B.Sc Agri — `8605620843`) & Jagdish Bodke (B.Sc Agri — `8888474456`)  
+**GitHub Repository**: `https://github.com/AKA2114SH/shrikrushna-agro-services.git`  
+**GitHub Pages Live Link**: `https://aka2114sh.github.io/shrikrushna-agro-services/`
 
 ---
 
@@ -80,11 +82,7 @@ Admin ERP & Dual AI Assistants (Farmer WhatsApp + Owner Marathi/English)
 
 ---
 
-## 🛠️ Installation & Setup
-
-### Prerequisites
-- Node.js v20+ / v22+
-- npm or pnpm
+## 🛠️ Installation, Testing & Deployment
 
 ### Quick Start
 ```bash
@@ -101,6 +99,10 @@ npm run dev
 npm run build
 npm start
 ```
+
+### GitHub Pages Deployment
+A GitHub Actions workflow is located at [deploy.yml](file:///.github/workflows/deploy.yml). When code is pushed to branch `main`, GitHub Actions builds and exports the static app and deploys it automatically to GitHub Pages:
+- **HTTPS Live URL**: `https://aka2114sh.github.io/shrikrushna-agro-services/`
 
 ---
 
