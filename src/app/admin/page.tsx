@@ -228,7 +228,7 @@ export default function AdminPage() {
           items: posItems,
           discountAmount: posDiscount,
           paymentMethod: posPaymentMethod,
-          paidAmount: posPaymentMethod === 'CREDIT' ? posPaidAmount : computePosTotal(),
+          paidAmount: posPaidAmount !== undefined ? posPaidAmount : (posPaymentMethod === 'CREDIT' ? 0 : computePosTotal()),
         }),
       });
 
@@ -790,49 +790,83 @@ export default function AdminPage() {
                 )}
               </div>
 
-              {/* Payment Method & Total */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">पेमेंट प्रकार (Payment Method)</label>
-                  <select
-                    value={posPaymentMethod}
-                    onChange={(e) => setPosPaymentMethod(e.target.value as any)}
-                    className="w-full border border-slate-300 rounded-lg p-2 bg-white font-bold"
-                  >
-                    <option value="CASH">💵 रोख (Cash)</option>
-                    <option value="UPI">📱 UPI / QR Code</option>
-                    <option value="BANK_TRANSFER">🏦 बँक ट्रान्सफर</option>
-                    <option value="CREDIT">📋 उधारी (Credit Khata)</option>
-                  </select>
+              {/* Payment Method, Discount & Partial Payment Input */}
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">पेमेंट प्रकार (Payment Method)</label>
+                    <select
+                      value={posPaymentMethod}
+                      onChange={(e) => setPosPaymentMethod(e.target.value as any)}
+                      className="w-full border border-slate-300 rounded-lg p-2 bg-white font-bold"
+                    >
+                      <option value="CASH">💵 रोख (Cash)</option>
+                      <option value="UPI">📱 UPI / QR Code</option>
+                      <option value="BANK_TRANSFER">🏦 बँक ट्रान्सफर</option>
+                      <option value="CREDIT">📋 पूर्ण उधारी (Full Credit)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">सूट / डिस्काउंट ₹</label>
+                    <input
+                      type="number"
+                      value={posDiscount}
+                      onChange={(e) => setPosDiscount(Number(e.target.value))}
+                      className="w-full border border-slate-300 rounded-lg p-2"
+                      placeholder="0"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">आता जमा केलेली रक्कम ₹ (Paid Now)</label>
+                    <input
+                      type="number"
+                      value={posPaidAmount !== undefined ? posPaidAmount : computePosTotal()}
+                      onChange={(e) => setPosPaidAmount(Number(e.target.value))}
+                      className="w-full border border-slate-300 rounded-lg p-2 font-bold text-agro-900 bg-white"
+                      placeholder="उदा. अर्धी रक्कम किंवा पूर्ण रक्कम"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">सूट / डिस्काउंट ₹</label>
-                  <input
-                    type="number"
-                    value={posDiscount}
-                    onChange={(e) => setPosDiscount(Number(e.target.value))}
-                    className="w-full border border-slate-300 rounded-lg p-2"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">जमा रक्कम (Paid Amount) ₹</label>
-                  <input
-                    type="number"
-                    value={posPaymentMethod === 'CREDIT' ? posPaidAmount : computePosTotal()}
-                    onChange={(e) => setPosPaidAmount(Number(e.target.value))}
-                    className="w-full border border-slate-300 rounded-lg p-2 font-bold"
-                  />
-                </div>
+
+                {/* Live Split Calculation & Khata Balance Display */}
+                {(() => {
+                  const total = computePosTotal();
+                  const paid = posPaidAmount !== undefined ? posPaidAmount : (posPaymentMethod === 'CREDIT' ? 0 : total);
+                  const remaining = Math.max(0, total - paid);
+                  return (
+                    <div className="pt-2 border-t border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                      <div className="bg-white p-2.5 rounded-xl border border-slate-200">
+                        <span className="text-slate-500 block text-[11px]">एकूण बिल रक्कम:</span>
+                        <strong className="text-sm text-slate-900">₹{total.toLocaleString('en-IN')}</strong>
+                      </div>
+                      <div className="bg-emerald-50 p-2.5 rounded-xl border border-emerald-200">
+                        <span className="text-emerald-700 block text-[11px]">आता जमा (Paid):</span>
+                        <strong className="text-sm text-emerald-800">₹{paid.toLocaleString('en-IN')}</strong>
+                      </div>
+                      <div className={`p-2.5 rounded-xl border ${remaining > 0 ? 'bg-amber-50 border-amber-300' : 'bg-slate-100 border-slate-200'}`}>
+                        <span className="text-slate-600 block text-[11px]">शिल्लक उधारी (Khata Balance):</span>
+                        <strong className={`text-sm ${remaining > 0 ? 'text-amber-900 font-extrabold' : 'text-slate-700'}`}>
+                          ₹{remaining.toLocaleString('en-IN')}
+                        </strong>
+                        {remaining > 0 && (
+                          <span className="block text-[10px] text-amber-800 font-medium mt-0.5">
+                            👉 ही रक्कम शेतकऱ्याच्या खात्यात नोंदवली जाईल.
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
-              <div className="flex justify-between items-center pt-3 border-t border-slate-200">
-                <span className="font-extrabold text-base text-slate-900">
-                  एकूण बिल रक्कम: <span className="text-agro-700">₹{computePosTotal().toLocaleString('en-IN')}</span>
+              <div className="flex flex-col sm:flex-row justify-between items-center gap-3 pt-2">
+                <span className="font-extrabold text-sm text-slate-700">
+                  निवडलेला शेतकरी: <span className="text-agro-800 font-bold">{posCustomerName || 'Walk-in Farmer'}</span>
                 </span>
                 <button
                   type="button"
                   onClick={handlePosSale}
-                  className="bg-gradient-to-r from-agro-700 to-agro-900 text-white font-bold px-6 py-3 rounded-xl hover:from-agro-800 hover:to-agro-950 transition shadow-agro flex items-center gap-2 text-xs"
+                  className="w-full sm:w-auto bg-gradient-to-r from-agro-700 to-agro-900 text-white font-bold px-6 py-3 rounded-xl hover:from-agro-800 hover:to-agro-950 transition shadow-agro flex items-center justify-center gap-2 text-xs"
                 >
                   <Printer className="w-4 h-4" />
                   <span>बिल पूर्ण करा व पावती प्रिंट करा</span>
