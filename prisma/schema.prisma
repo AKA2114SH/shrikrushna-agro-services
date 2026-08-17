@@ -1,0 +1,527 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  OWNER
+  MANAGER
+  AGRONOMIST
+  CASHIER
+  ACCOUNTANT
+}
+
+enum PaymentStatus {
+  PAID
+  PARTIAL
+  UNPAID
+}
+
+enum PaymentMethod {
+  CASH
+  UPI
+  BANK_TRANSFER
+  CREDIT
+}
+
+enum StockMovementType {
+  OPENING_STOCK
+  PURCHASE
+  SALE
+  SALES_RETURN
+  PURCHASE_RETURN
+  DAMAGE
+  EXPIRED
+  ADJUSTMENT
+  TRANSFER
+}
+
+enum QuotationStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  REJECTED
+  EXPIRED
+  CONVERTED
+}
+
+enum ExpenseCategory {
+  RENT
+  ELECTRICITY
+  SALARY
+  TRANSPORT
+  MARKETING
+  MAINTENANCE
+  OFFICE
+  INTERNET
+  OTHER
+}
+
+enum MessageDirection {
+  INBOUND
+  OUTBOUND
+}
+
+model User {
+  id           String      @id @default(cuid())
+  name         String
+  phone        String      @unique
+  email        String?     @unique
+  passwordHash String
+  role         UserRole    @default(CASHIER)
+  isActive     Boolean     @default(true)
+  isDemo       Boolean     @default(false)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  sales            Sale[]
+  purchases        Purchase[]
+  quotations       Quotation[]
+  expenses         Expense[]
+  stockMovements   StockMovement[]
+  auditLogs        AuditLog[]
+  customerPayments CustomerPayment[]
+  supplierPayments SupplierPayment[]
+
+  @@index([phone])
+  @@index([role])
+}
+
+model Customer {
+  id                 String            @id @default(cuid())
+  name               String
+  phone              String            @unique
+  village            String
+  taluka             String            @default("Sinnar")
+  district           String            @default("Nashik")
+  totalLandAcres     Decimal?          @db.Decimal(10, 2)
+  outstandingBalance Decimal           @default(0) @db.Decimal(12, 2)
+  creditLimit        Decimal           @default(50000) @db.Decimal(12, 2)
+  isDemo             Boolean           @default(false)
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  crops              CustomerCrop[]
+  sales              Sale[]
+  quotations         Quotation[]
+  payments           CustomerPayment[]
+
+  @@index([phone])
+  @@index([village])
+}
+
+model CustomerCrop {
+  id         String   @id @default(cuid())
+  customerId String
+  cropName   String
+  acreage    Decimal? @db.Decimal(8, 2)
+  season     String?
+  isDemo     Boolean  @default(false)
+
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+}
+
+model Supplier {
+  id                 String            @id @default(cuid())
+  name               String
+  contactPerson      String?
+  phone              String
+  email              String?
+  gstin              String?
+  address            String?
+  city               String            @default("Nashik")
+  outstandingPayable Decimal           @default(0) @db.Decimal(12, 2)
+  isDemo             Boolean           @default(false)
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  purchases          Purchase[]
+  payments           SupplierPayment[]
+
+  @@index([name])
+}
+
+model Category {
+  id            String    @id @default(cuid())
+  nameEn        String
+  nameMr        String
+  slug          String    @unique
+  icon          String?
+  descriptionEn String?
+  descriptionMr String?
+  isDemo        Boolean   @default(false)
+
+  products      Product[]
+}
+
+model Brand {
+  id           String    @id @default(cuid())
+  name         String    @unique
+  manufacturer String?
+  logoUrl      String?
+  isDemo       Boolean   @default(false)
+
+  products     Product[]
+}
+
+model Product {
+  id            String          @id @default(cuid())
+  nameEn        String
+  nameMr        String
+  brandId       String?
+  categoryId    String
+  sku           String          @unique
+  hsnCode       String?
+  unit          String          @default("Kg")
+  packSize      String          @default("1 Kg")
+  mrp           Decimal         @db.Decimal(10, 2)
+  sellingPrice  Decimal         @db.Decimal(10, 2)
+  purchasePrice Decimal         @db.Decimal(10, 2)
+  gstRate       Decimal         @default(0) @db.Decimal(5, 2)
+  totalStock    Decimal         @default(0) @db.Decimal(10, 2)
+  minStockLevel Decimal         @default(10) @db.Decimal(10, 2)
+  isAvailable   Boolean         @default(true)
+  imageUrl      String?
+  technicalName String?
+  targetCrops   String?
+  dosageGuide   String?
+  descriptionEn String?
+  descriptionMr String?
+  isDemo        Boolean         @default(false)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  category       Category        @relation(fields: [categoryId], references: [id])
+  brand          Brand?          @relation(fields: [brandId], references: [id])
+  batches        ProductBatch[]
+  stockMovements StockMovement[]
+  saleItems      SaleItem[]
+  purchaseItems  PurchaseItem[]
+  quotationItems QuotationItem[]
+
+  @@index([nameEn])
+  @@index([nameMr])
+  @@index([categoryId])
+  @@index([brandId])
+  @@index([sku])
+}
+
+model ProductBatch {
+  id           String          @id @default(cuid())
+  productId    String
+  batchNumber  String
+  mfgDate      DateTime?
+  expiryDate   DateTime?
+  purchaseCost Decimal         @db.Decimal(10, 2)
+  currentStock Decimal         @default(0) @db.Decimal(10, 2)
+  isDemo       Boolean         @default(false)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  product        Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  stockMovements StockMovement[]
+  saleItems      SaleItem[]
+
+  @@unique([productId, batchNumber])
+  @@index([expiryDate])
+}
+
+model StockMovement {
+  id            String            @id @default(cuid())
+  productId     String
+  batchId       String?
+  movementType  StockMovementType
+  quantity      Decimal           @db.Decimal(10, 2)
+  unitCost      Decimal?          @db.Decimal(10, 2)
+  referenceType String?
+  referenceId   String?
+  notes         String?
+  performedById String?
+  isDemo        Boolean           @default(false)
+  createdAt     DateTime          @default(now())
+
+  product     Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  batch       ProductBatch? @relation(fields: [batchId], references: [id])
+  performedBy User?         @relation(fields: [performedById], references: [id])
+
+  @@index([productId])
+  @@index([movementType])
+  @@index([createdAt])
+}
+
+model Sale {
+  id             String          @id @default(cuid())
+  invoiceNumber  String          @unique
+  customerId     String?
+  customerName   String
+  customerPhone  String?
+  customerVillage String?
+  subtotal       Decimal         @db.Decimal(12, 2)
+  taxAmount      Decimal         @default(0) @db.Decimal(12, 2)
+  discountAmount Decimal         @default(0) @db.Decimal(12, 2)
+  grandTotal     Decimal         @db.Decimal(12, 2)
+  paidAmount     Decimal         @db.Decimal(12, 2)
+  balanceAmount  Decimal         @default(0) @db.Decimal(12, 2)
+  paymentStatus  PaymentStatus   @default(PAID)
+  paymentMethod  PaymentMethod   @default(CASH)
+  notes          String?
+  createdById    String?
+  isDemo         Boolean         @default(false)
+  createdAt      DateTime        @default(now())
+
+  customer       Customer?       @relation(fields: [customerId], references: [id])
+  createdBy      User?           @relation(fields: [createdById], references: [id])
+  items          SaleItem[]
+  payments       CustomerPayment[]
+
+  @@index([invoiceNumber])
+  @@index([customerId])
+  @@index([createdAt])
+  @@index([paymentStatus])
+}
+
+model SaleItem {
+  id         String        @id @default(cuid())
+  saleId     String
+  productId  String
+  batchId    String?
+  quantity   Decimal       @db.Decimal(10, 2)
+  unitPrice  Decimal       @db.Decimal(10, 2)
+  gstRate    Decimal       @default(0) @db.Decimal(5, 2)
+  taxAmount  Decimal       @default(0) @db.Decimal(10, 2)
+  totalPrice Decimal       @db.Decimal(12, 2)
+  isDemo     Boolean       @default(false)
+
+  sale    Sale          @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product Product       @relation(fields: [productId], references: [id])
+  batch   ProductBatch? @relation(fields: [batchId], references: [id])
+
+  @@index([saleId])
+  @@index([productId])
+}
+
+model Purchase {
+  id             String          @id @default(cuid())
+  invoiceNumber  String          @unique
+  supplierId     String
+  subtotal       Decimal         @db.Decimal(12, 2)
+  taxAmount      Decimal         @default(0) @db.Decimal(12, 2)
+  freightCost    Decimal         @default(0) @db.Decimal(10, 2)
+  otherCosts     Decimal         @default(0) @db.Decimal(10, 2)
+  grandTotal     Decimal         @db.Decimal(12, 2)
+  paidAmount     Decimal         @db.Decimal(12, 2)
+  balanceAmount  Decimal         @default(0) @db.Decimal(12, 2)
+  paymentStatus  PaymentStatus   @default(PAID)
+  paymentMethod  PaymentMethod   @default(BANK_TRANSFER)
+  notes          String?
+  createdById    String?
+  isDemo         Boolean         @default(false)
+  createdAt      DateTime        @default(now())
+
+  supplier       Supplier        @relation(fields: [supplierId], references: [id])
+  createdBy      User?           @relation(fields: [createdById], references: [id])
+  items          PurchaseItem[]
+  payments       SupplierPayment[]
+
+  @@index([invoiceNumber])
+  @@index([supplierId])
+  @@index([createdAt])
+}
+
+model PurchaseItem {
+  id          String    @id @default(cuid())
+  purchaseId  String
+  productId   String
+  batchNumber String?
+  mfgDate     DateTime?
+  expiryDate  DateTime?
+  quantity    Decimal   @db.Decimal(10, 2)
+  unitCost    Decimal   @db.Decimal(10, 2)
+  gstRate     Decimal   @default(0) @db.Decimal(5, 2)
+  totalCost   Decimal   @db.Decimal(12, 2)
+  isDemo      Boolean   @default(false)
+
+  purchase Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  product  Product  @relation(fields: [productId], references: [id])
+
+  @@index([purchaseId])
+  @@index([productId])
+}
+
+model Quotation {
+  id              String          @id @default(cuid())
+  quotationNumber String          @unique
+  customerId      String?
+  customerName    String
+  customerPhone   String
+  customerVillage String?
+  subtotal        Decimal         @db.Decimal(12, 2)
+  discountAmount  Decimal         @default(0) @db.Decimal(12, 2)
+  taxAmount       Decimal         @default(0) @db.Decimal(12, 2)
+  deliveryCharges Decimal         @default(0) @db.Decimal(10, 2)
+  grandTotal      Decimal         @db.Decimal(12, 2)
+  validUntil      DateTime
+  status          QuotationStatus @default(DRAFT)
+  notes           String?
+  terms           String?
+  createdById     String?
+  isDemo          Boolean         @default(false)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  customer  Customer?       @relation(fields: [customerId], references: [id])
+  createdBy User?           @relation(fields: [createdById], references: [id])
+  items     QuotationItem[]
+
+  @@index([quotationNumber])
+  @@index([customerPhone])
+  @@index([status])
+}
+
+model QuotationItem {
+  id              String    @id @default(cuid())
+  quotationId     String
+  productId       String
+  quantity        Decimal   @db.Decimal(10, 2)
+  unitPrice       Decimal   @db.Decimal(10, 2)
+  discountPercent Decimal   @default(0) @db.Decimal(5, 2)
+  gstRate         Decimal   @default(0) @db.Decimal(5, 2)
+  taxAmount       Decimal   @default(0) @db.Decimal(10, 2)
+  totalPrice      Decimal   @db.Decimal(12, 2)
+  isDemo          Boolean   @default(false)
+
+  quotation Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  product   Product   @relation(fields: [productId], references: [id])
+
+  @@index([quotationId])
+}
+
+model Expense {
+  id            String          @id @default(cuid())
+  category      ExpenseCategory
+  amount        Decimal         @db.Decimal(10, 2)
+  paymentMethod PaymentMethod   @default(CASH)
+  vendor        String?
+  receiptUrl    String?
+  notes         String?
+  expenseDate   DateTime        @default(now())
+  recordedById  String?
+  isDemo        Boolean         @default(false)
+  createdAt     DateTime        @default(now())
+
+  recordedBy User? @relation(fields: [recordedById], references: [id])
+
+  @@index([category])
+  @@index([expenseDate])
+}
+
+model CustomerPayment {
+  id              String        @id @default(cuid())
+  customerId      String
+  saleId          String?
+  amount          Decimal       @db.Decimal(12, 2)
+  paymentMethod   PaymentMethod @default(CASH)
+  referenceNumber String?
+  notes           String?
+  recordedById    String?
+  isDemo          Boolean       @default(false)
+  createdAt       DateTime      @default(now())
+
+  customer   Customer @relation(fields: [customerId], references: [id])
+  sale       Sale?    @relation(fields: [saleId], references: [id])
+  recordedBy User?    @relation(fields: [recordedById], references: [id])
+
+  @@index([customerId])
+  @@index([createdAt])
+}
+
+model SupplierPayment {
+  id              String        @id @default(cuid())
+  supplierId      String
+  purchaseId      String?
+  amount          Decimal       @db.Decimal(12, 2)
+  paymentMethod   PaymentMethod @default(BANK_TRANSFER)
+  referenceNumber String?
+  notes           String?
+  recordedById    String?
+  isDemo          Boolean       @default(false)
+  createdAt       DateTime      @default(now())
+
+  supplier   Supplier  @relation(fields: [supplierId], references: [id])
+  purchase   Purchase? @relation(fields: [purchaseId], references: [id])
+  recordedBy User?     @relation(fields: [recordedById], references: [id])
+
+  @@index([supplierId])
+  @@index([createdAt])
+}
+
+model WhatsAppMessage {
+  id          String           @id @default(cuid())
+  phone       String
+  direction   MessageDirection
+  messageType String           @default("text")
+  content     String
+  status      String           @default("delivered")
+  intent      String?
+  toolCalled  String?
+  isDemo      Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+
+  @@index([phone])
+  @@index([createdAt])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  userName  String?
+  userRole  String?
+  action    String
+  entity    String
+  entityId  String?
+  oldData   String?  @db.Text
+  newData   String?  @db.Text
+  ipAddress String?
+  userAgent String?
+  isDemo    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([entity])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model BusinessSettings {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  valueJson String   @db.Text
+  isDemo    Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+
+  @@index([key])
+}
+
+model CropAdvisory {
+  id                    String   @id @default(cuid())
+  cropNameEn            String
+  cropNameMr            String
+  season                String
+  sowingTime            String
+  soilType              String
+  majorDiseases         String   @db.Text
+  recommendedFertilizers String  @db.Text
+  spraySchedule         String   @db.Text
+  verifiedBy            String   @default("Shubham Gamane & Jagdish Bodke (B.Sc Agri)")
+  isDemo                Boolean  @default(false)
+  createdAt             DateTime @default(now())
+
+  @@index([cropNameEn])
+}

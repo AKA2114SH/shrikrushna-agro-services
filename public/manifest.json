@@ -1,0 +1,22 @@
+{
+  "name": "श्री कृष्ण ॲग्रो सर्व्हिसेस (Shri Krishna Agro Services)",
+  "short_name": "Shri Krishna Agro",
+  "description": "सिन्नर तालुक्यातील विश्वासू कृषी निविष्ठा, बियाणे, खते व पीक सल्ला केंद्र",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#064e3b",
+  "theme_color": "#064e3b",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
