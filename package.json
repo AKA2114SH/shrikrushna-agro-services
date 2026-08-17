@@ -13,7 +13,7 @@
     "test:concurrency": "tsx scripts/test-concurrency.ts",
     "test:math": "tsx scripts/test-math.ts",
     "test:all": "tsx scripts/test-math.ts && tsx scripts/test-security.ts && tsx scripts/test-concurrency.ts",
-    "deploy:gh": "npx gh-pages -d out -t true"
+    "deploy:gh": "npx gh-pages -d out --dotfiles"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
