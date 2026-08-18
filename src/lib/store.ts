@@ -924,7 +924,7 @@ export const INITIAL_PRODUCTS: Product[] = [
   // ३. फवारणीची कीटकनाशके (Insecticides)
   // ==========================================
   {
-    id: "prod-14",
+    id: "prod-13",
     nameEn: "FMC Coragen (Chlorantraniliprole 18.5% SC)",
     nameMr: "एफएमसी कोराजन (अळी व कीटक नियंत्रक)",
     brandId: "br-4",
@@ -950,13 +950,53 @@ export const INITIAL_PRODUCTS: Product[] = [
     descriptionMr: "अळी, फळपोखरणारी कीड व लष्करी अळीवर २१ दिवसांपर्यंत दीर्घकाळ संरक्षण देणारे औषध.",
     batches: [
       {
-        id: "batch-14a",
-        productId: "prod-14",
+        id: "batch-13a",
+        productId: "prod-13",
         batchNumber: "CRG-24-09",
         mfgDate: "2024-01-11",
         expiryDate: "2027-01-10",
         purchaseCost: 780,
         currentStock: 22,
+        isDemo: true,
+      },
+    ],
+    isDemo: true,
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: "prod-14",
+    nameEn: "Corteva Delegate (Spinetoram 11.7% SC)",
+    nameMr: "कॉर्टेव्हा डेलिगेट (थ्रिप्स व अळी नाशक)",
+    brandId: "br-10",
+    brandName: "Corteva Agriscience",
+    categoryId: "cat-4",
+    categoryNameEn: "Insecticides",
+    categoryNameMr: "कीटकनाशके",
+    sku: "COR-DEL-100ML",
+    hsnCode: "38089190",
+    unit: "Bottle",
+    packSize: "100 ml",
+    mrp: 1650,
+    sellingPrice: 1450,
+    purchasePrice: 1220,
+    gstRate: 18,
+    totalStock: 18,
+    minStockLevel: 5,
+    isAvailable: true,
+    technicalName: "Spinetoram 11.7% SC",
+    targetCrops: "कांदा थ्रिप्स (Onion Thrips), मिरची, टोमॅटो, कापूस",
+    dosageGuide: "०.९ मिली प्रति लिटर पाणी (१८० मिली प्रति एकर)",
+    descriptionEn: "Next generation spinosyn insecticide with rapid knockdown and ovicidal action against thrips.",
+    descriptionMr: "कांद्यातील हट्टी थ्रिप्स (बोकड्या) व अळ्यांवर तात्काळ परिणाम करणारे आधुनिक कीटकनाशक.",
+    batches: [
+      {
+        id: "batch-14a",
+        productId: "prod-14",
+        batchNumber: "DEL-24-11",
+        mfgDate: "2024-03-20",
+        expiryDate: "2026-10-15",
+        purchaseCost: 1220,
+        currentStock: 18,
         isDemo: true,
       },
     ],
@@ -2454,6 +2494,24 @@ class BusinessStore {
     this.stockMovements = [];
     this.isDemoModeActive = true;
     this.seedInitialMovementsAndSales();
+  }
+
+  public restoreFromBackup(data: {
+    products?: Product[];
+    customers?: Customer[];
+    suppliers?: Supplier[];
+    sales?: Sale[];
+    purchases?: Purchase[];
+    expenses?: Expense[];
+    quotations?: Quotation[];
+  }) {
+    if (data.products && Array.isArray(data.products)) this.products = JSON.parse(JSON.stringify(data.products));
+    if (data.customers && Array.isArray(data.customers)) this.customers = JSON.parse(JSON.stringify(data.customers));
+    if (data.suppliers && Array.isArray(data.suppliers)) this.suppliers = JSON.parse(JSON.stringify(data.suppliers));
+    if (data.sales && Array.isArray(data.sales)) this.sales = JSON.parse(JSON.stringify(data.sales));
+    if (data.purchases && Array.isArray(data.purchases)) this.purchases = JSON.parse(JSON.stringify(data.purchases));
+    if (data.expenses && Array.isArray(data.expenses)) this.expenses = JSON.parse(JSON.stringify(data.expenses));
+    if (data.quotations && Array.isArray(data.quotations)) this.quotations = JSON.parse(JSON.stringify(data.quotations));
   }
 }
 

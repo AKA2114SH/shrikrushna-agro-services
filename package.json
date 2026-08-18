@@ -14,7 +14,10 @@
     "test:math": "tsx scripts/test-math.ts",
     "test:auth": "tsx scripts/test-auth.ts",
     "test:ai": "tsx scripts/test-ai-security.ts",
-    "test:all": "tsx scripts/test-math.ts && tsx scripts/test-security.ts && tsx scripts/test-concurrency.ts && tsx scripts/test-auth.ts && tsx scripts/test-ai-security.ts",
+    "test:restore": "tsx scripts/test-restore.ts",
+    "test:db": "tsx scripts/test-db-persistence.ts",
+    "test:secrets": "tsx scripts/test-bundle-secrets.ts",
+    "test:all": "tsx scripts/test-math.ts && tsx scripts/test-security.ts && tsx scripts/test-concurrency.ts && tsx scripts/test-auth.ts && tsx scripts/test-ai-security.ts && tsx scripts/test-restore.ts && tsx scripts/test-db-persistence.ts && tsx scripts/test-bundle-secrets.ts",
     "deploy:gh": "npx gh-pages -d out --dotfiles"
   },
   "dependencies": {
