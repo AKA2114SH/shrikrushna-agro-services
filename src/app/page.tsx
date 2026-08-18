@@ -328,11 +328,14 @@ export default function HomePage() {
                   {/* Product Visual Image Frame */}
                   <div className="relative w-full h-44 rounded-xl overflow-hidden bg-slate-950 shadow-inner group">
                     <img
-                      src={`/shrikrushna-agro-services/products/${p.id}.svg`}
+                      src={`/shrikrushna-agro-services/products/${p.id}.png`}
                       alt={p.nameMr}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       onError={(e) => {
-                        (e.target as HTMLImageElement).src = `./products/${p.id}.svg`;
+                        const target = e.target as HTMLImageElement;
+                        if (!target.src.endsWith('.svg')) {
+                          target.src = `/shrikrushna-agro-services/products/${p.id}.svg`;
+                        }
                       }}
                     />
                     <div className="absolute top-2 left-2 bg-slate-950/85 backdrop-blur-sm text-white text-[10px] font-extrabold px-2 py-0.5 rounded-md border border-white/20">
