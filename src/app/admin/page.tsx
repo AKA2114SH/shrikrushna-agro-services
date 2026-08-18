@@ -660,7 +660,7 @@ export default function AdminPage() {
             <span>लॉगिन युझर: {activeAdmin?.name}</span>
           </div>
           <h1 className="text-xl sm:text-3xl font-extrabold tracking-tight">
-            श्री कृष्ण ॲग्रो — डिजिटल बिझनेस ऑपरेटिंग सिस्टम
+            श्री कृष्ण ॲग्रो सर्व्हिसेस, सिन्नर
           </h1>
           <p className="text-xs sm:text-sm text-emerald-100/90 mt-1">
             सिन्नर, जि. नाशिक • अधिकृत कृषी सल्लागार: शुभम गमाणे (8605620843) व जगदीश बोडके (8888474456)

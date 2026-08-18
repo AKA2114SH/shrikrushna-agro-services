@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import store from '@/lib/store';
+import DatabaseService from '@/lib/db-service';
 import { getCurrentUser, checkPermission } from '@/lib/auth';
 import { logAuditEvent } from '@/lib/audit';
 
@@ -11,7 +12,7 @@ export async function GET(req: NextRequest) {
     const search = searchParams.get('q');
     const user = await getCurrentUser();
 
-    let products = store.getProducts();
+    let products = await DatabaseService.getProducts();
 
     if (category && category !== 'all') {
       products = products.filter(
@@ -85,7 +86,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const newProduct = store.addProduct({
+    const newProduct = await DatabaseService.createProduct({
       ...body,
       isDemo: user.isDemo ?? store.isDemoActive(),
     });

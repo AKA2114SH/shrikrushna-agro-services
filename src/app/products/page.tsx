@@ -20,8 +20,9 @@ export default function ProductsPage() {
   const [activeProduct, setActiveProduct] = useState<Product | null>(null);
 
   useEffect(() => {
-    // Attempt API refresh if running in dynamic server environment
-    fetch('/api/products')
+    // Attempt API refresh from backend (supporting NEXT_PUBLIC_API_URL if decoupled)
+    const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || ''}/api/products`;
+    fetch(apiUrl)
       .then((r) => r.json())
       .then((data) => {
         if (data.products && data.products.length > 0) setProducts(data.products);

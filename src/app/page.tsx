@@ -36,8 +36,9 @@ export default function HomePage() {
   const [selectedProductForQuote, setSelectedProductForQuote] = useState<Product | null>(null);
 
   useEffect(() => {
-    // Attempt API refresh if running in Node server environment
-    fetch('/api/products')
+    // Attempt API refresh from backend (supporting NEXT_PUBLIC_API_URL if decoupled)
+    const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || ''}/api/products`;
+    fetch(apiUrl)
       .then((res) => res.json())
       .then((data) => {
         if (data.products && data.products.length > 0) setProducts(data.products);

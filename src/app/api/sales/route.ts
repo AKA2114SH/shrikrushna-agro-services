@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import store from '@/lib/store';
+import DatabaseService from '@/lib/db-service';
 import { getCurrentUser, checkPermission } from '@/lib/auth';
 import { logAuditEvent } from '@/lib/audit';
 
@@ -50,7 +51,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Customer name and sale items are required.' }, { status: 400 });
     }
 
-    const result = store.createSale({
+    const result = await DatabaseService.executeSaleTransaction({
       customerId,
       customerName,
       customerPhone,
