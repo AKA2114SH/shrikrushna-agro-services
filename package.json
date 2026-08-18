@@ -12,7 +12,9 @@
     "test:security": "tsx scripts/test-security.ts",
     "test:concurrency": "tsx scripts/test-concurrency.ts",
     "test:math": "tsx scripts/test-math.ts",
-    "test:all": "tsx scripts/test-math.ts && tsx scripts/test-security.ts && tsx scripts/test-concurrency.ts",
+    "test:auth": "tsx scripts/test-auth.ts",
+    "test:ai": "tsx scripts/test-ai-security.ts",
+    "test:all": "tsx scripts/test-math.ts && tsx scripts/test-security.ts && tsx scripts/test-concurrency.ts && tsx scripts/test-auth.ts && tsx scripts/test-ai-security.ts",
     "deploy:gh": "npx gh-pages -d out --dotfiles"
   },
   "dependencies": {

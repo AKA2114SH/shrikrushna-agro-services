@@ -13,9 +13,20 @@ export interface AuthUser {
   isDemo?: boolean;
 }
 
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'shrikrishna_agro_sinnar_secret_key_2026_secure'
-);
+export function getJwtSecretKey(): Uint8Array {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    if (
+      process.env.NODE_ENV === 'production' &&
+      process.env.GITHUB_PAGES !== 'true' &&
+      process.env.NEXT_EXPORT !== 'true'
+    ) {
+      throw new Error('FATAL SECURITY ERROR: JWT_SECRET environment variable is missing in production!');
+    }
+    return new TextEncoder().encode('sk_agro_sinnar_dev_signing_key_32_bytes_min_secure!');
+  }
+  return new TextEncoder().encode(secret);
+}
 
 const COOKIE_NAME = 'sk_agro_session';
 
@@ -126,12 +137,12 @@ export async function createSessionToken(user: AuthUser): Promise<string> {
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime('7d')
-    .sign(JWT_SECRET);
+    .sign(getJwtSecretKey());
 }
 
 export async function verifySessionToken(token: string): Promise<AuthUser | null> {
   try {
-    const { payload } = await jwtVerify(token, JWT_SECRET);
+    const { payload } = await jwtVerify(token, getJwtSecretKey());
     return {
       id: payload.sub as string,
       name: payload.name as string,

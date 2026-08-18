@@ -12,17 +12,38 @@ export interface FarmerAIMessageOutput {
   intent: string;
 }
 
+function normalizeQuery(input: string): string {
+  const marathiDigits = ['०', '१', '२', '३', '४', '५', '६', '७', '८', '९'];
+  let res = input.toLowerCase();
+  marathiDigits.forEach((d, idx) => {
+    res = res.replaceAll(d, String(idx));
+  });
+  return res;
+}
+
 // Bounded Safe Tool Implementations
 function searchProductsTool(query: string) {
   const products = store.getProducts();
-  const q = query.toLowerCase();
-  return products.filter(
-    (p) =>
-      p.nameMr.toLowerCase().includes(q) ||
-      p.nameEn.toLowerCase().includes(q) ||
-      p.brandName.toLowerCase().includes(q) ||
-      (p.technicalName && p.technicalName.toLowerCase().includes(q))
-  );
+  const rawQ = query.toLowerCase();
+  const normQ = normalizeQuery(query);
+
+  return products.filter((p) => {
+    const pNameMr = p.nameMr.toLowerCase();
+    const pNameEn = p.nameEn.toLowerCase();
+    const pBrand = p.brandName.toLowerCase();
+    const pTech = (p.technicalName || '').toLowerCase();
+
+    return (
+      pNameMr.includes(rawQ) ||
+      pNameMr.includes(normQ) ||
+      pNameEn.includes(rawQ) ||
+      pNameEn.includes(normQ) ||
+      pBrand.includes(rawQ) ||
+      pBrand.includes(normQ) ||
+      pTech.includes(rawQ) ||
+      pTech.includes(normQ)
+    );
+  });
 }
 
 function checkStockTool(query: string) {
@@ -45,6 +66,7 @@ export async function handleFarmerAIMessage({
   message,
 }: FarmerAIMessageInput): Promise<FarmerAIMessageOutput> {
   const text = message.toLowerCase().trim();
+  const normalizedText = normalizeQuery(text);
   const profile = store.getProfile();
 
   // 1. Greeting & Business Information
@@ -101,9 +123,15 @@ export async function handleFarmerAIMessage({
   // 4. Product Stock & Price Inquiries
   const productKeywords = [
     '19:19:19',
+    '19 19 19',
+    '19-19-19',
     '0:52:34',
+    '12:61:00',
+    '0:0:50',
     '10:26:26',
     'dap',
+    'युरिया',
+    'urea',
     'नॅटिव्हो',
     'nativo',
     'अॅमिस्टार',
@@ -112,25 +140,46 @@ export async function handleFarmerAIMessage({
     'nitrabor',
     'कोराजन',
     'coragen',
+    'डेलिगेट',
+    'delegate',
+    'अलिका',
+    'alika',
+    'कॉनफिडोर',
+    'confidor',
     'कांदा',
     'onion',
     'बियाणे',
     'खत',
     'झिंक',
     'zinc',
+    'बोरॉन',
+    'boron',
+    'इसाबियन',
+    'isabion',
     'खते',
   ];
 
-  const matchedKeyword = productKeywords.find((kw) => text.includes(kw));
+  const matchedKeyword = productKeywords.find(
+    (kw) => text.includes(kw) || normalizedText.includes(kw)
+  );
 
-  if (matchedKeyword || text.includes('भाव') || text.includes('दर') || text.includes('price') || text.includes('stock')) {
-    const searchTarget = matchedKeyword || text.replace(/भाव|दर|price|stock|आहे का|rate/gi, '').trim();
+  if (
+    matchedKeyword ||
+    text.includes('भाव') ||
+    text.includes('दर') ||
+    text.includes('price') ||
+    text.includes('stock') ||
+    normalizedText.includes('19:19:19')
+  ) {
+    const searchTarget =
+      matchedKeyword ||
+      normalizedText.replace(/भाव|दर|price|stock|आहे का|rate|उपलब्ध/gi, '').trim();
     const results = checkStockTool(searchTarget || '19:19:19');
 
     if (results && results.length > 0) {
       let replyList = `🌿 *श्री कृष्ण ॲग्रो - उत्पादन दर व उपलब्धता:*\n\n`;
       results.slice(0, 3).forEach((item, idx) => {
-        replyList += `${idx + 1}. *${item.name}* (${item.pack})\n   💰 दर: ₹${item.sellingPrice} (MRP: ₹${item.mrp})\n   📦 स्थिती: ${item.isAvailable ? '✅ दुकानात उपलब्ध आहे' : '⏳ मागणीवर उपलब्ध'}\n\n`;
+        replyList += `${idx + 1}. *${item.name}* (${item.pack})\n   💰 चालू दर: ₹${item.sellingPrice} (MRP: ₹${item.mrp})\n   📦 स्थिती: ${item.isAvailable ? '✅ दुकानात उपलब्ध आहे' : '⏳ मागणीवर उपलब्ध'}\n\n`;
       });
       replyList += `आपल्याला या उत्पादनांचे अधिकृत कोटेशन हवे असल्यास "कोटेशन पाठवा" असा मेसेज करा.`;
 
@@ -140,21 +189,33 @@ export async function handleFarmerAIMessage({
         intent: 'PRODUCT_INQUIRY',
       };
     }
+
+    return {
+      reply: `आपण विचारलेले उत्पादन सध्या सिस्टिममध्ये आढळले नाही. कृपया अचूक नाव तपासा किंवा थेट शुभम गमाणे (${profile.phonePrimary}) यांच्याशी संपर्क साधा.`,
+      toolCalled: 'productNotFound',
+      intent: 'PRODUCT_NOT_FOUND',
+    };
   }
 
-  // 5. Create Quotation Request
-  if (text.includes('कोटेशन') || text.includes('quotation') || text.includes('quote') || text.includes('दरपत्रक')) {
+  // 5. Quotation Request Trigger
+  if (
+    text.includes('कोटेशन') ||
+    text.includes('दरपत्रक') ||
+    text.includes('quotation') ||
+    text.includes('quote') ||
+    text.includes('bill')
+  ) {
     return {
-      reply: `📋 *कोटेशन विनंती नोंदवली गेली आहे!* 🙏\n\nआपले नाव: ${senderName}\nमोबाईल: ${phone}\n\nआमचे तज्ञ शुभम गमाणे व जगदीश बोडके आपल्या मागणीनुसार अधिकृत संगणकीय कोटेशन (PDF) तयार करून त्वरित या व्हॉट्सॲपवर पाठवतील.\n\nकाही विशेष सूचना असल्यास नक्की कळवा.`,
-      toolCalled: 'createQuotationRequest',
+      reply: `📋 *डिजिटल कोटेशन तयार करण्यासाठी:*\nकृपया आपल्याला हवी असलेली उत्पादने व प्रमाण (उदा. ५ बॅग युरिया, २ बाटल्या कोराजन) पाठवा. आमची सिस्टिम आपल्याला लगेच संगणकीय दरपत्रक तयार करून देईल.`,
+      toolCalled: 'requestQuotationDetails',
       intent: 'QUOTATION_REQUEST',
     };
   }
 
-  // 6. Default Fallback
+  // Default fallback with human escalation
   return {
-    reply: `आपला संदेश मिळाला आहे. श्री कृष्ण ॲग्रो सर्व्हिसेस, सिन्नर तर्फे आम्ही लवकरच आपल्याशी संपर्क करू.\n\nत्वरित मदतीसाठी कॉल करा: ${profile.phonePrimary} / ${profile.phoneSecondary}.`,
-    toolCalled: 'defaultFallback',
-    intent: 'GENERAL_INQUIRY',
+    reply: `आपल्या संदेशाबद्दल धन्यवाद. अधिक सविस्तर माहिती व मदतीसाठी कृपया आमचे तज्ञ शुभम गमाणे (${profile.phonePrimary}) किंवा जगदीश बोडके (${profile.phoneSecondary}) यांच्याशी संपर्क साधा.`,
+    toolCalled: 'generalFallback',
+    intent: 'FALLBACK',
   };
 }
