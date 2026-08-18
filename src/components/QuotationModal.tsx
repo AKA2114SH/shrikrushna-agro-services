@@ -188,7 +188,7 @@ export default function QuotationModal({
                   कोटेशन क्रमांक: <strong className="font-mono text-agro-800 text-sm">{submitted.quotationNumber}</strong>
                 </p>
                 <div className="inline-block bg-emerald-100 text-emerald-900 font-extrabold text-sm px-4 py-1 rounded-full mt-2">
-                  एकूण रक्कम: ₹{submitted.grandTotal.toLocaleString('en-IN')}
+                  एकूण रक्कम: ₹{Number(submitted?.grandTotal || 0).toLocaleString('en-IN')}
                 </div>
               </div>
 

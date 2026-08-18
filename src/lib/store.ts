@@ -216,6 +216,7 @@ export interface Quotation {
   subtotal: number;
   discountAmount: number;
   taxAmount: number;
+  totalTax?: number;
   deliveryCharges: number;
   grandTotal: number;
   validUntil: string;
@@ -2099,14 +2100,70 @@ class BusinessStore {
     return this.quotations.filter((q) => includeDemo || !q.isDemo);
   }
 
-  public createQuotation(q: Omit<Quotation, 'id' | 'quotationNumber' | 'createdAt'>): Quotation {
+  public createQuotation(q: Partial<Quotation> & {
+    customerName: string;
+    customerPhone: string;
+    customerVillage?: string;
+    items: Array<any>;
+    createdByName?: string;
+    notes?: string;
+  }): Quotation {
+    let subtotal = 0;
+    let taxAmount = 0;
+    const items: QuotationItem[] = (q.items || []).map((it, idx) => {
+      const prod = this.getProductById(it.productId);
+      const unitPrice = it.unitPrice || prod?.sellingPrice || 100;
+      const gstRate = it.gstRate !== undefined ? it.gstRate : (prod?.gstRate || 5);
+      const quantity = Number(it.quantity) || 1;
+      const lineSubtotal = unitPrice * quantity;
+      const lineTax = (lineSubtotal * gstRate) / 100;
+      subtotal += lineSubtotal;
+      taxAmount += lineTax;
+      return {
+        id: it.id || `qitem_${Date.now()}_${idx}`,
+        productId: it.productId,
+        productName: it.productName || prod?.nameMr || prod?.nameEn || 'उत्पादन',
+        packSize: it.packSize || prod?.packSize || '1 नग',
+        quantity,
+        unitPrice,
+        discountPercent: Number(it.discountPercent) || 0,
+        gstRate,
+        taxAmount: Math.round(lineTax),
+        totalPrice: Math.round(lineSubtotal + lineTax),
+      };
+    });
+
+    const discountAmount = Number(q.discountAmount) || 0;
+    const deliveryCharges = Number(q.deliveryCharges) || 0;
+    const grandTotal = Math.round(subtotal + taxAmount - discountAmount + deliveryCharges);
+    const validUntilDate = new Date();
+    validUntilDate.setDate(validUntilDate.getDate() + 15);
+    const validUntil = q.validUntil || validUntilDate.toISOString().split('T')[0];
+
     const quoteNum = `QTN-${new Date().getFullYear()}-${String(this.quotations.length + 1).padStart(3, '0')}`;
     const newQuote: Quotation = {
-      ...q,
       id: `quote_${Date.now()}`,
       quotationNumber: quoteNum,
+      customerId: q.customerId,
+      customerName: q.customerName,
+      customerPhone: q.customerPhone,
+      customerVillage: q.customerVillage || 'सिन्नर',
+      subtotal: Math.round(subtotal),
+      discountAmount,
+      taxAmount: Math.round(taxAmount),
+      totalTax: Math.round(taxAmount),
+      deliveryCharges,
+      grandTotal,
+      validUntil,
+      status: q.status || 'DRAFT',
+      notes: q.notes,
+      terms: q.terms || '१५ दिवसांसाठी वैध',
+      items,
+      createdByName: q.createdByName || 'शेतकरी सेल्फ-कोटेशन',
+      isDemo: q.isDemo ?? false,
       createdAt: new Date().toISOString(),
     };
+
     this.quotations.unshift(newQuote);
     return newQuote;
   }

@@ -171,7 +171,7 @@ export default function QuotationPage() {
     const lines = quote.items
       .map((it, i) => `${i + 1}. ${it.productName} (${it.packSize}) x ${it.quantity} = ₹${it.totalPrice}`)
       .join('\n');
-    const msg = `🌾 *श्री कृष्ण ॲग्रो सर्व्हिसेस, सिन्नर*\n📄 *संगणकीय कोटेशन क्र:* ${quote.quotationNumber}\n👤 *शेतकरी:* ${quote.customerName} (${quote.customerVillage || 'सिन्नर'})\n📱 *मोबाईल:* ${quote.customerPhone}\n🌱 *पीक:* ${quote.notes || 'शेती'}\n\n*मागणी केलेले साहित्य:*\n${lines}\n\n💰 *अंदाजे एकूण रक्कम:* ₹${quote.grandTotal.toLocaleString('en-IN')}\n\n📍 *पत्ता:* श्री कृष्ण ॲग्रो सर्व्हिसेस, सिन्नर, जि. नाशिक\n📞 शुभम गमाणे: 8605620843 | जगदीश बोडके: 8888474456`;
+    const msg = `🌾 *श्री कृष्ण ॲग्रो सर्व्हिसेस, सिन्नर*\n📄 *संगणकीय कोटेशन क्र:* ${quote.quotationNumber}\n👤 *शेतकरी:* ${quote.customerName} (${quote.customerVillage || 'सिन्नर'})\n📱 *मोबाईल:* ${quote.customerPhone}\n🌱 *पीक:* ${quote.notes || 'शेती'}\n\n*मागणी केलेले साहित्य:*\n${lines}\n\n💰 *अंदाजे एकूण रक्कम:* ₹${Number(quote.grandTotal || 0).toLocaleString('en-IN')}\n\n📍 *पत्ता:* श्री कृष्ण ॲग्रो सर्व्हिसेस, सिन्नर, जि. नाशिक\n📞 शुभम गमाणे: 8605620843 | जगदीश बोडके: 8888474456`;
     return `https://wa.me/918605620843?text=${encodeURIComponent(msg)}`;
   };
 
@@ -222,7 +222,7 @@ export default function QuotationPage() {
                   कोटेशन क्र: <strong className="text-agro-800 font-mono text-sm">{createdQuote.quotationNumber}</strong> | शेतकरी: <strong>{createdQuote.customerName}</strong>
                 </p>
                 <div className="inline-block bg-emerald-100/80 border border-emerald-300 text-emerald-900 font-extrabold text-base px-4 py-1.5 rounded-full mt-2">
-                  एकूण रक्कम: ₹{createdQuote.grandTotal.toLocaleString('en-IN')}
+                  एकूण रक्कम: ₹{Number(createdQuote?.grandTotal || 0).toLocaleString('en-IN')}
                 </div>
               </div>
 
@@ -460,7 +460,7 @@ export default function QuotationPage() {
                       {q.customerName} ({q.customerVillage || 'सिन्नर'})
                     </span>
                     <span className="font-extrabold text-agro-800 font-mono text-sm">
-                      ₹{q.grandTotal.toLocaleString('en-IN')}
+                      ₹{Number(q.grandTotal || 0).toLocaleString('en-IN')}
                     </span>
                   </div>
                   <div className="text-[11px] text-slate-500 flex items-center justify-between">
@@ -615,13 +615,13 @@ export default function QuotationPage() {
                 <div className="w-64 bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-1.5 text-xs">
                   <div className="flex justify-between text-slate-600">
                     <span>उपएकूण (Subtotal):</span>
-                    <span className="font-mono">₹{selectedQuoteForPrint.subtotal.toLocaleString('en-IN')}</span>
+                    <span className="font-mono">₹{Number(selectedQuoteForPrint.subtotal || 0).toLocaleString('en-IN')}</span>
                   </div>
                   <div className="flex justify-between text-slate-600">
                     <span>जीएसटी कर (GST):</span>
-                    <span className="font-mono">₹{selectedQuoteForPrint.totalTax.toLocaleString('en-IN')}</span>
+                    <span className="font-mono">₹{Number(selectedQuoteForPrint.totalTax ?? selectedQuoteForPrint.taxAmount ?? 0).toLocaleString('en-IN')}</span>
                   </div>
-                  {selectedQuoteForPrint.discountAmount > 0 && (
+                  {Number(selectedQuoteForPrint.discountAmount || 0) > 0 && (
                     <div className="flex justify-between text-emerald-700 font-bold">
                       <span>सवलत (Discount):</span>
                       <span className="font-mono">-₹{selectedQuoteForPrint.discountAmount}</span>
@@ -630,7 +630,7 @@ export default function QuotationPage() {
                   <div className="flex justify-between text-sm font-extrabold text-agro-950 pt-2 border-t border-slate-300">
                     <span>एकूण रक्कम (Total):</span>
                     <span className="font-mono text-agro-800 text-base">
-                      ₹{selectedQuoteForPrint.grandTotal.toLocaleString('en-IN')}
+                      ₹{Number(selectedQuoteForPrint.grandTotal || 0).toLocaleString('en-IN')}
                     </span>
                   </div>
                 </div>
