@@ -189,9 +189,27 @@ export default function ProductsPage() {
                   className="bg-white rounded-2xl border border-slate-200/90 p-4 flex flex-col justify-between shadow-sm hover:shadow-md transition space-y-3"
                 >
                   <div className="space-y-2">
+                    {/* Product Visual Image Frame */}
+                    <div className="relative w-full h-44 rounded-xl overflow-hidden bg-slate-950 shadow-inner group">
+                      <img
+                        src={`/shrikrushna-agro-services/products/${p.id}.svg`}
+                        alt={p.nameMr}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = `./products/${p.id}.svg`;
+                        }}
+                      />
+                      <div className="absolute top-2 left-2 bg-slate-950/85 backdrop-blur-sm text-white text-[10px] font-extrabold px-2 py-0.5 rounded-md border border-white/20">
+                        {p.brandName}
+                      </div>
+                      <div className="absolute top-2 right-2 bg-emerald-600 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-md shadow-sm">
+                        {p.packSize}
+                      </div>
+                    </div>
+
                     <div className="flex justify-between items-center text-[10px]">
                       <span className="bg-slate-100 text-slate-800 px-2 py-0.5 rounded font-extrabold uppercase">
-                        {p.brandName}
+                        {p.categoryNameMr || 'कृषी निविष्ठा'}
                       </span>
                       <span
                         className={`font-bold px-2 py-0.5 rounded ${

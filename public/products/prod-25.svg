@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#854d0e" />
+      <stop offset="100%" stop-color="#422006" />
+    </linearGradient>
+    <linearGradient id="botGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="100%" stop-color="#e2e8f0" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="30" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Background Canvas -->
+  <rect width="400" height="400" rx="32" fill="url(#bgGrad)" />
+
+  <!-- Ambient Lighting Orbs -->
+  <circle cx="200" cy="200" r="140" fill="#fde047" opacity="0.18" filter="url(#glow)" />
+  <circle cx="80" cy="80" r="80" fill="#d97706" opacity="0.12" />
+  
+  <!-- Subtle Grid Pattern -->
+  <g opacity="0.05" stroke="#ffffff" stroke-width="1">
+    <line x1="0" y1="100" x2="400" y2="100" />
+    <line x1="0" y1="200" x2="400" y2="200" />
+    <line x1="0" y1="300" x2="400" y2="300" />
+    <line x1="100" y1="0" x2="100" y2="400" />
+    <line x1="200" y1="0" x2="200" y2="400" />
+    <line x1="300" y1="0" x2="300" y2="400" />
+  </g>
+
+  <!-- Top Floating Brand Pill -->
+  <g filter="drop-shadow(0 4px 8px rgba(0,0,0,0.3))">
+    <rect x="30" y="25" width="140" height="30" rx="15" fill="#0f172a" opacity="0.9" stroke="#fde047" stroke-width="1.5" />
+    <circle cx="45" cy="40" r="5" fill="#fde047" />
+    <text x="58" y="44" font-family="system-ui, sans-serif" font-size="11" font-weight="900" fill="#ffffff">Pioneer Seeds</text>
+  </g>
+
+  <!-- Top Right 100% Genuine Seal -->
+  <g filter="drop-shadow(0 4px 8px rgba(0,0,0,0.3))">
+    <rect x="250" y="25" width="120" height="30" rx="15" fill="#d97706" />
+    <text x="310" y="44" font-family="system-ui, sans-serif" font-size="10" font-weight="900" fill="#ffffff" text-anchor="middle">१००% अस्सल निविष्ठा</text>
+  </g>
+
+  <!-- Main Illustration -->
+  
+      <!-- Seed Foil Pouch -->
+      <path d="M135,100 L265,100 L275,350 C275,360 265,365 245,365 L155,365 C135,365 125,360 125,350 Z" fill="url(#botGrad)" filter="drop-shadow(0 15px 25px rgba(0,0,0,0.4))" />
+      <!-- Foil Top Seal -->
+      <polygon points="135,100 265,100 265,115 135,115" fill="#fde047" stroke="#ffffff" stroke-width="1.5" />
+      
+      <!-- Front Product Art Area -->
+      <rect x="142" y="130" width="116" height="200" rx="10" fill="#ffffff" />
+      <rect x="146" y="135" width="108" height="30" rx="5" fill="#d97706" />
+      <text x="200" y="154" font-family="system-ui, sans-serif" font-size="10" font-weight="900" fill="#ffffff" text-anchor="middle">PIONEER SEEDS</text>
+      
+      <circle cx="200" cy="205" r="30" fill="#d97706" opacity="0.2" />
+      <!-- Sprout Graphic -->
+      <path d="M190,215 C190,195 205,190 210,190 C210,210 195,215 190,215 Z" fill="#d97706" />
+      <path d="M210,215 C210,195 195,190 190,190 C190,210 205,215 210,215 Z" fill="#fde047" opacity="0.8" />
+      
+      <text x="200" y="255" font-family="system-ui, sans-serif" font-size="11" font-weight="900" fill="#0f172a" text-anchor="middle">P3396 Maize</text>
+      <text x="200" y="272" font-family="system-ui, sans-serif" font-size="8" font-weight="700" fill="#64748b" text-anchor="middle">High Yield Hybrid Corn</text>
+      
+      <rect x="152" y="295" width="96" height="24" rx="6" fill="#d97706" />
+      <text x="200" y="311" font-family="system-ui, sans-serif" font-size="11" font-weight="900" fill="#ffffff" text-anchor="middle">CERTIFIED SEED</text>
+    
+
+  <!-- Bottom Brand Footer Ribbon -->
+  <rect x="0" y="360" width="400" height="40" fill="#020617" opacity="0.85" />
+  <text x="20" y="384" font-family="system-ui, sans-serif" font-size="11" font-weight="900" fill="#ffffff">श्री कृष्ण ॲग्रो सर्व्हिसेस, सिन्नर</text>
+  <text x="380" y="384" font-family="system-ui, sans-serif" font-size="11" font-weight="800" fill="#fde047" text-anchor="end">4 Kg Bag</text>
+</svg>
