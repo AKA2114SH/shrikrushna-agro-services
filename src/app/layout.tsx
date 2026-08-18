@@ -24,7 +24,7 @@ export const metadata: Metadata = {
     'कांदा खते सिन्नर',
     'द्राक्ष औषधे नाशिक',
   ],
-  authors: [{ name: 'Shri Krishna Agro Services' }, { name: 'Akash Khatale' }],
+  authors: [{ name: 'Shri Krishna Agro Services' }, { name: 'Shubham Gamane' }, { name: 'Jagdish Bodke' }],
   manifest: '/manifest.json',
   openGraph: {
     title: 'श्री कृष्ण ॲग्रो सर्व्हिसेस, सिन्नर | Shri Krishna Agro Services',

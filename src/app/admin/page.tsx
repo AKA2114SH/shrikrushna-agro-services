@@ -69,20 +69,20 @@ interface AdminUser {
 const DEFAULT_ADMIN_USERS: AdminUser[] = [
   {
     id: 'adm-1',
-    name: 'Akash Khatale (मुख्य मालक / Solutions Architect)',
-    phone: '9373873065',
-    email: 'akash@shrikrishnaagro.in',
-    pin: '9373',
-    passwordHash: 'admin@shrikrishna',
-    role: 'OWNER',
-  },
-  {
-    id: 'adm-2',
-    name: 'Shubham Gamane (B.Sc Agri तज्ञ व भागीदार)',
+    name: 'Shubham Gamane (B.Sc Agri तज्ञ व व्यवस्थापक)',
     phone: '8605620843',
     email: 'shubham@shrikrishnaagro.in',
     pin: '8605',
     passwordHash: 'shubham@agro',
+    role: 'OWNER',
+  },
+  {
+    id: 'adm-2',
+    name: 'Jagdish Bodke (B.Sc Agri तज्ञ व भागीदार)',
+    phone: '8888474456',
+    email: 'jagdish@shrikrishnaagro.in',
+    pin: '8888',
+    passwordHash: 'jagdish@agro',
     role: 'PARTNER',
   },
 ];
@@ -90,14 +90,14 @@ const DEFAULT_ADMIN_USERS: AdminUser[] = [
 export default function AdminPage() {
   const { t } = useLanguage();
 
-  // Authentication State — Strict Max 2 Admin Users
+  // Authentication State — Strict Max 2 Admin Users (Shubham & Jagdish)
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>(DEFAULT_ADMIN_USERS);
   const [activeAdmin, setActiveAdmin] = useState<AdminUser | null>(DEFAULT_ADMIN_USERS[0]);
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(true);
   
   // Login Form State
-  const [loginIdentifier, setLoginIdentifier] = useState<string>('9373873065');
-  const [loginSecret, setLoginSecret] = useState<string>('9373');
+  const [loginIdentifier, setLoginIdentifier] = useState<string>('8605620843');
+  const [loginSecret, setLoginSecret] = useState<string>('8605');
   const [authError, setAuthError] = useState<string>('');
 
   // Active Module Tab
@@ -343,7 +343,7 @@ export default function AdminPage() {
 
     const msg = `📊 *श्री कृष्ण ॲग्रो सर्व्हिसेस — मासिक सुरक्षित बॅकअप व उधारी अहवाल*\n\n📅 तारीख: ${new Date().toLocaleDateString('mr-IN')}\n💰 एकूण विक्री: ₹${kpis.totalRevenue}\n💵 निव्वळ नफा: ₹${kpis.netProfit}\n⚠️ एकूण शेतकरी उधारी येणे: ₹${totalReceivable}\n\n*प्रमुख उधारी खाती:*\n${debtorList}\n\nसर्व साठा व व्यवहार सुरक्षित नोंदवले गेले आहेत.`;
     
-    window.open(`https://wa.me/919373873065?text=${encodeURIComponent(msg)}`, '_blank');
+    window.open(`https://wa.me/918605620843?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
   // POS Calculations
@@ -590,8 +590,8 @@ export default function AdminPage() {
               <span>कमाल २ अधिकृत व्यवस्थापक नोंदणीकृत आहेत:</span>
             </div>
             <p className="text-[11px] text-emerald-800 pl-5">
-              १. आकाश खताळे (9373873065)<br />
-              २. शुभम गमाणे (8605620843)
+              १. शुभम गमाणे (8605620843)<br />
+              २. जगदीश बोडके (8888474456)
             </p>
           </div>
 
@@ -611,7 +611,7 @@ export default function AdminPage() {
                 required
                 value={loginIdentifier}
                 onChange={(e) => setLoginIdentifier(e.target.value)}
-                placeholder="उदा. 9373873065"
+                placeholder="उदा. 8605620843"
                 className="w-full border border-slate-300 rounded-xl p-3 text-sm font-semibold focus:ring-2 focus:ring-agro-600 shadow-sm"
               />
             </div>
@@ -663,7 +663,7 @@ export default function AdminPage() {
             श्री कृष्ण ॲग्रो — डिजिटल बिझनेस ऑपरेटिंग सिस्टम
           </h1>
           <p className="text-xs sm:text-sm text-emerald-100/90 mt-1">
-            सिन्नर, जि. नाशिक • प्रोप्रा. आकाश खताळे • कृषी सल्लागार: शुभम गमाणे व जगदीश बोडके
+            सिन्नर, जि. नाशिक • अधिकृत कृषी सल्लागार: शुभम गमाणे (8605620843) व जगदीश बोडके (8888474456)
           </p>
         </div>
 
@@ -1289,7 +1289,7 @@ export default function AdminPage() {
                 <span>मासिक उधारी व नफा अहवाल थेट मालकाच्या WhatsApp वर पाठवा</span>
               </div>
               <p className="text-xs text-slate-300">
-                आकाश खताळे (9373873065) यांच्या व्हॉट्सॲपवर सर्व थकबाकीदार शेतकऱ्यांची यादी व नफा सारांश पाठवला जातो.
+                शुभम गमाणे (8605620843) यांच्या व्हॉट्सॲपवर सर्व थकबाकीदार शेतकऱ्यांची यादी व नफा सारांश पाठवला जातो.
               </p>
             </div>
 

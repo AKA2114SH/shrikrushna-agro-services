@@ -145,13 +145,14 @@ export default function Footer() {
           <p>{t.disclaimer}</p>
         </div>
 
-        {/* Bottom bar & developer signature */}
+        {/* Bottom bar */}
         <div className="pt-6 flex flex-col sm:flex-row justify-between items-center text-xs text-slate-500 gap-3">
           <p>{t.copyright}</p>
           <div className="flex items-center gap-2">
-            <span>सिस्टम आर्किटेक्ट व डेव्हलपमेंट:</span>
-            <span className="text-emerald-400 font-bold">आकाश खताळे (Akash Khatale)</span>
-            <span>| 9373873065</span>
+            <span>अधिकृत कृषी सल्लागार:</span>
+            <span className="text-emerald-400 font-bold">शुभम गमाणे (8605620843)</span>
+            <span>|</span>
+            <span className="text-emerald-400 font-bold">जगदीश बोडके (8888474456)</span>
           </div>
         </div>
       </div>

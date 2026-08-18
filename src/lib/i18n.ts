@@ -87,7 +87,7 @@ export const dictionary = {
     // Footer & Disclaimer
     footerDesc: "श्री कृष्ण ॲग्रो सर्व्हिसेस, सिन्नर — शेतकऱ्यांच्या भरभराटीसाठी कटिबद्ध. अधिकृत परवानाधारक कृषी सेवा केंद्र.",
     disclaimer: "सूचना: सर्व कीटकनाशके व औषधांचा वापर कृषी तज्ञांच्या सल्ल्याने व उत्पादक कंपनीच्या लेबल निर्देशांनुसारच करावा.",
-    copyright: "सर्व हक्क राखीव © २०२६ श्री कृष्ण ॲग्रो सर्व्हिसेस. डिझाइन व सिस्टिम: आकाश खताळे.",
+    copyright: "सर्व हक्क राखीव © २०२६ श्री कृष्ण ॲग्रो सर्व्हिसेस, सिन्नर (जि. नाशिक).",
 
     // Admin & ERP
     dashboard: "डॅशबोर्ड",
@@ -189,7 +189,7 @@ export const dictionary = {
     // Footer & Disclaimer
     footerDesc: "Shri Krishna Agro Services, Sinnar — Dedicated to farmer prosperity. Authorized agricultural input retailer & advisory center.",
     disclaimer: "Disclaimer: Always use agrochemicals in accordance with manufacturer label guidelines and authorized agricultural advice.",
-    copyright: "All Rights Reserved © 2026 Shri Krishna Agro Services. Built by Akash Khatale.",
+    copyright: "All Rights Reserved © 2026 Shri Krishna Agro Services, Sinnar, Nashik.",
 
     // Admin & ERP
     dashboard: "Dashboard",
