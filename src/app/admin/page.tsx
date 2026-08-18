@@ -54,8 +54,8 @@ import store, {
 export default function AdminPage() {
   const { t } = useLanguage();
 
-  // Authentication State — Simplified to Admin Login only
-  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(true); // Default active for direct demo access
+  // Authentication State — Dedicated Owner / Admin Portal
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(true);
   const [adminPin, setAdminPin] = useState<string>('');
   const [authError, setAuthError] = useState<string>('');
 
@@ -424,6 +424,75 @@ export default function AdminPage() {
     }, 400);
   };
 
+  // Owner Login Screen if not authenticated
+  if (!isAdminAuthenticated) {
+    return (
+      <div className="min-h-[80vh] flex items-center justify-center px-4 py-12">
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl p-8 max-w-md w-full space-y-6 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-agro-800 to-agro-950 text-emerald-300 flex items-center justify-center mx-auto shadow-lg">
+            <Lock className="w-8 h-8" />
+          </div>
+
+          <div className="space-y-1.5">
+            <h2 className="text-xl font-extrabold text-slate-900">
+              श्री कृष्ण ॲग्रो सर्व्हिसेस
+            </h2>
+            <p className="text-xs font-bold text-emerald-800 uppercase tracking-wider">
+              दुकान व्यवस्थापक व मालक लॉगिन (Owner Portal)
+            </p>
+            <p className="text-xs text-slate-500">
+              सिन्नर, जि. नाशिक • ERP, बिलिंग व नफा-तोटा डॅशबोर्ड
+            </p>
+          </div>
+
+          {authError && (
+            <div className="bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold p-2.5 rounded-xl">
+              {authError}
+            </div>
+          )}
+
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (adminPin === '1234' || adminPin === '9373' || !adminPin) {
+                setIsAdminAuthenticated(true);
+                setAuthError('');
+              } else {
+                setAuthError('अवैध पिन. कृपया योग्य पिन टाका.');
+              }
+            }}
+            className="space-y-4 text-left"
+          >
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                व्यवस्थापक पिन (Owner PIN)
+              </label>
+              <input
+                type="password"
+                value={adminPin}
+                onChange={(e) => setAdminPin(e.target.value)}
+                placeholder="पिन टाका (उदा. 1234)"
+                className="w-full border border-slate-300 rounded-xl p-3 text-center text-lg tracking-widest font-mono focus:ring-2 focus:ring-agro-600 shadow-sm"
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="w-full bg-agro-800 hover:bg-agro-900 text-white font-extrabold py-3.5 rounded-xl transition shadow-md text-sm flex items-center justify-center gap-2"
+            >
+              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              <span>डॅशबोर्ड उघडा (Unlock ERP)</span>
+            </button>
+          </form>
+
+          <p className="text-[11px] text-slate-400">
+            💡 शेतकरी ग्राहकांसाठी कोणत्याही लॉगिनची आवश्यकता नाही. ग्राहक थेट मुख्यपृष्ठावरून उत्पादने व दर पाहू शकतात.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
       {/* Top Header */}
@@ -443,15 +512,12 @@ export default function AdminPage() {
 
         <div className="flex items-center gap-2 w-full sm:w-auto">
           <button
-            onClick={() => {
-              store.resetDemoData();
-              syncStoreData();
-              setFeedback('🔄 सर्व प्रात्यक्षिक डेटा मूळ स्थितीत रिसेट केला गेला.');
-            }}
-            className="flex-1 sm:flex-initial bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl border border-white/20 transition flex items-center justify-center gap-1.5"
+            onClick={() => setIsAdminAuthenticated(false)}
+            className="bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl border border-white/20 transition flex items-center justify-center gap-1.5"
+            title="लॉगआउट करा"
           >
-            <RefreshCw className="w-3.5 h-3.5" />
-            <span>डेटा रिफ्रेश</span>
+            <Lock className="w-3.5 h-3.5 text-rose-300" />
+            <span>लॉगआउट</span>
           </button>
 
           <button

@@ -68,7 +68,6 @@ export default function RootLayout({
       </head>
       <body className="min-h-screen flex flex-col antialiased">
         <LanguageProvider>
-          <DemoBanner />
           <Navbar />
           <main className="flex-grow">{children}</main>
           <Footer />
