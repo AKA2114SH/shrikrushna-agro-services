@@ -25,12 +25,17 @@ import {
   Phone,
   Send,
   Sparkles,
-  Download,
-  Upload,
-  UserCheck,
+  Edit3,
+  Search,
+  Eye,
+  Check,
+  Calendar,
+  Layers,
+  Sprout,
+  ArrowDownRight,
+  ArrowUpRight,
 } from 'lucide-react';
-import { UserRole } from '@/lib/auth';
-import {
+import store, {
   Product,
   Customer,
   Supplier,
@@ -39,19 +44,20 @@ import {
   Quotation,
   Expense,
   StockMovement,
-  StaffMember,
   BusinessProfile,
+  INITIAL_PRODUCTS,
+  INITIAL_CUSTOMERS,
+  INITIAL_CATEGORIES,
+  INITIAL_BRANDS,
 } from '@/lib/store';
 
 export default function AdminPage() {
   const { t } = useLanguage();
 
-  // Active Role State (For real-time demo & RBAC validation)
-  const [currentRole, setCurrentRole] = useState<UserRole>('OWNER');
-  const [currentUser, setCurrentUser] = useState<{ name: string; phone: string }>({
-    name: 'Shri Krishna Agro Owner',
-    phone: '9800000001',
-  });
+  // Authentication State — Simplified to Admin Login only
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(true); // Default active for direct demo access
+  const [adminPin, setAdminPin] = useState<string>('');
+  const [authError, setAuthError] = useState<string>('');
 
   // Active Module Tab
   const [activeTab, setActiveTab] = useState<
@@ -62,1605 +68,1593 @@ export default function AdminPage() {
     | 'customers'
     | 'quotations'
     | 'expenses'
+    | 'financials'
     | 'whatsapp'
     | 'owner_ai'
-    | 'staff'
-    | 'audit'
     | 'settings'
   >('dashboard');
 
-  // Master Data State
-  const [kpis, setKpis] = useState<any>(null);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [sales, setSales] = useState<Sale[]>([]);
-  const [purchases, setPurchases] = useState<Purchase[]>([]);
-  const [quotations, setQuotations] = useState<Quotation[]>([]);
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [movements, setMovements] = useState<StockMovement[]>([]);
-  const [staff, setStaff] = useState<StaffMember[]>([]);
-  const [profile, setProfile] = useState<BusinessProfile | null>(null);
+  // Master Data State — Pre-loaded from store for 100% offline & GitHub Pages support
+  const [kpis, setKpis] = useState<any>(() => store.getFinancialKPIs());
+  const [products, setProducts] = useState<Product[]>(() => store.getProducts());
+  const [customers, setCustomers] = useState<Customer[]>(() => store.getCustomers());
+  const [suppliers, setSuppliers] = useState<Supplier[]>(() => store.getSuppliers());
+  const [sales, setSales] = useState<Sale[]>(() => store.getSales());
+  const [purchases, setPurchases] = useState<Purchase[]>(() => store.getPurchases());
+  const [quotations, setQuotations] = useState<Quotation[]>(() => store.getQuotations());
+  const [expenses, setExpenses] = useState<Expense[]>(() => store.getExpenses());
+  const [movements, setMovements] = useState<StockMovement[]>(() => store.getStockMovements());
+  const [profile, setProfile] = useState<BusinessProfile | null>(() => store.getProfile());
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
-  const [isDemoActive, setIsDemoActive] = useState<boolean>(true);
-  const [loading, setLoading] = useState<boolean>(true);
   const [feedback, setFeedback] = useState<string>('');
 
-  // POS Form State
-  const [posCustomer, setPosCustomer] = useState<string>('');
-  const [posCustomerName, setPosCustomerName] = useState<string>('');
-  const [posCustomerPhone, setPosCustomerPhone] = useState<string>('');
-  const [posCustomerVillage, setPosCustomerVillage] = useState<string>('');
-  const [posItems, setPosItems] = useState<Array<{ productId: string; quantity: number; unitPrice: number; gstRate: number }>>([]);
+  // POS Billing Form State
+  const [posCustomer, setPosCustomer] = useState<string>('cust-1');
+  const [posCustomerName, setPosCustomerName] = useState<string>('Babasaheb Deshmukh');
+  const [posCustomerPhone, setPosCustomerPhone] = useState<string>('9822114477');
+  const [posCustomerVillage, setPosCustomerVillage] = useState<string>('मुसळगाव (Musalgaon)');
+  const [posItems, setPosItems] = useState<
+    Array<{ productId: string; quantity: number; unitPrice: number; gstRate: number }>
+  >([
+    { productId: 'prod-1', quantity: 2, unitPrice: 190, gstRate: 5 },
+    { productId: 'prod-9', quantity: 1, unitPrice: 760, gstRate: 18 },
+  ]);
   const [posDiscount, setPosDiscount] = useState<number>(0);
   const [posPaymentMethod, setPosPaymentMethod] = useState<'CASH' | 'UPI' | 'BANK_TRANSFER' | 'CREDIT'>('CASH');
-  const [posPaidAmount, setPosPaidAmount] = useState<number>(0);
+  const [posPaidAmount, setPosPaidAmount] = useState<number>(500); // Demo partial payment
 
-  // Purchase Form State
-  const [purSupplier, setPurSupplier] = useState<string>('');
-  const [purInvoice, setPurInvoice] = useState<string>('');
-  const [purItems, setPurItems] = useState<Array<{ productId: string; batchNumber: string; mfgDate: string; expiryDate: string; quantity: number; unitCost: number; gstRate: number }>>([]);
-  const [purFreight, setPurFreight] = useState<number>(0);
-  const [purPaidAmount, setPurPaidAmount] = useState<number>(0);
+  // Add/Edit Product Modal State
+  const [productModalOpen, setProductModalOpen] = useState<boolean>(false);
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  const [pNameMr, setPNameMr] = useState<string>('');
+  const [pNameEn, setPNameEn] = useState<string>('');
+  const [pCategoryId, setPCategoryId] = useState<string>('cat-1');
+  const [pBrandName, setPBrandName] = useState<string>('Mahadhan');
+  const [pPackSize, setPPackSize] = useState<string>('1 Kg Bag');
+  const [pUnit, setPUnit] = useState<string>('Kg');
+  const [pSellingPrice, setPSellingPrice] = useState<number>(200);
+  const [pPurchasePrice, setPPurchasePrice] = useState<number>(160);
+  const [pGstRate, setPGstRate] = useState<number>(5);
+  const [pInitialStock, setPInitialStock] = useState<number>(50);
+  const [pMinStock, setPMinStock] = useState<number>(10);
+  const [pTechnicalName, setPTechnicalName] = useState<string>('');
+  const [pTargetCrops, setPTargetCrops] = useState<string>('कांदा, द्राक्ष, भाजीपाला');
+  const [pDosageGuide, setPDosageGuide] = useState<string>('५ ग्रॅम प्रति लिटर पाणी');
+  const [pBatchNo, setPBatchNo] = useState<string>('BATCH-2026-01');
+  const [pExpiryDate, setPExpiryDate] = useState<string>('2027-12-31');
+
+  // Customer Payment Collection Modal
+  const [paymentModalOpen, setPaymentModalOpen] = useState<boolean>(false);
+  const [selectedKhataCustomer, setSelectedKhataCustomer] = useState<Customer | null>(null);
+  const [collectAmount, setCollectAmount] = useState<number>(0);
+  const [collectNotes, setCollectNotes] = useState<string>('');
+
+  // Purchase Entry Form State
+  const [purSupplier, setPurSupplier] = useState<string>('sup-1');
+  const [purInvoice, setPurInvoice] = useState<string>('INV-DEALER-2026');
+  const [purItems, setPurItems] = useState<
+    Array<{
+      productId: string;
+      batchNumber: string;
+      mfgDate: string;
+      expiryDate: string;
+      quantity: number;
+      unitCost: number;
+      gstRate: number;
+    }>
+  >([
+    {
+      productId: 'prod-1',
+      batchNumber: 'MDH-2026-NEW',
+      mfgDate: '2026-01-10',
+      expiryDate: '2028-01-09',
+      quantity: 50,
+      unitCost: 155,
+      gstRate: 5,
+    },
+  ]);
+  const [purFreight, setPurFreight] = useState<number>(250);
+  const [purPaidAmount, setPurPaidAmount] = useState<number>(8000);
 
   // Expense Form State
   const [expCategory, setExpCategory] = useState<any>('RENT');
-  const [expAmount, setExpAmount] = useState<number>(0);
-  const [expMethod, setExpMethod] = useState<'CASH' | 'UPI' | 'BANK_TRANSFER'>('CASH');
-  const [expVendor, setExpVendor] = useState<string>('');
-  const [expNotes, setExpNotes] = useState<string>('');
+  const [expAmount, setExpAmount] = useState<number>(12000);
+  const [expMethod, setExpMethod] = useState<'CASH' | 'UPI' | 'BANK_TRANSFER'>('BANK_TRANSFER');
+  const [expVendor, setExpVendor] = useState<string>('दुकान भाडे (Main Market Sinnar)');
+  const [expNotes, setExpNotes] = useState<string>('मासिक दुकान भाडे');
 
   // Owner AI Query State
-  const [aiQuery, setAiQuery] = useState<string>('');
+  const [aiQuery, setAiQuery] = useState<string>('गेल्या आठवड्यातील कांदा औषधांची विक्री आणि नफा कसा आहे?');
   const [aiResponse, setAiResponse] = useState<any>(null);
   const [aiLoading, setAiLoading] = useState<boolean>(false);
 
   // WhatsApp Simulator State
   const [simPhone, setSimPhone] = useState<string>('9822114477');
   const [simName, setSimName] = useState<string>('बाबासाहेब देशमुख (Babasaheb)');
-  const [simMessage, setSimMessage] = useState<string>('१९:१९:१९ चे काय दर आहेत?');
-  const [simHistory, setSimHistory] = useState<any[]>([]);
+  const [simMessage, setSimMessage] = useState<string>('१९:१९:१९ चे काय दर आहेत आणि कांदा फुगवणीसाठी काय औषध देऊ?');
+  const [simHistory, setSimHistory] = useState<any[]>([
+    {
+      role: 'user',
+      text: 'नमस्कार, १९:१९:१९ चे काय दर आहेत?',
+      timestamp: '१०:१५ AM',
+    },
+    {
+      role: 'assistant',
+      text: 'नमस्कार बाबासाहेब! महाधन १९:१९:१९ चा चालू विक्री दर ₹१९० प्रति १ किलो आहे. दुकानात ८५ किलो साठा उपलब्ध आहे. कांदा फुगवणीसाठी महाधन ०:५२:३४ (₹२१०) देखील उपलब्ध आहे.',
+      timestamp: '१०:१५ AM',
+    },
+  ]);
   const [simLoading, setSimLoading] = useState<boolean>(false);
 
-  // Load All Master ERP Data
-  const refreshData = async () => {
-    setLoading(true);
-    try {
-      // 1. Authenticate session with current demo role
-      await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: currentUser.phone, role: currentRole }),
-      });
-
-      // 2. Fetch data parallelly
-      const [pRes, cRes, supRes, sRes, purRes, qRes, eRes, kRes, stRes, setRes, logRes, waRes] =
-        await Promise.all([
-          fetch('/api/products').then((r) => r.json()),
-          fetch('/api/customers').then((r) => r.json()).catch(() => ({ customers: [] })),
-          fetch('/api/purchases').then((r) => r.json()).catch(() => ({ purchases: [] })),
-          fetch('/api/sales').then((r) => r.json()).catch(() => ({ sales: [] })),
-          fetch('/api/purchases').then((r) => r.json()).catch(() => ({ purchases: [] })),
-          fetch('/api/quotations').then((r) => r.json()).catch(() => ({ quotations: [] })),
-          fetch('/api/expenses').then((r) => r.json()).catch(() => ({ expenses: [] })),
-          fetch('/api/reports/kpis').then((r) => r.json()).catch(() => ({ kpis: null })),
-          fetch('/api/admin/staff').then((r) => r.json()).catch(() => ({ staff: [] })),
-          fetch('/api/admin/settings').then((r) => r.json()).catch(() => ({ profile: null })),
-          fetch('/api/admin/audit-logs').then((r) => r.json()).catch(() => ({ logs: [] })),
-          fetch('/api/whatsapp/webhook').then((r) => r.json()).catch(() => ({ history: [] })),
-        ]);
-
-      if (pRes.products) setProducts(pRes.products);
-      if (cRes.customers) setCustomers(cRes.customers);
-      if (sRes.sales) setSales(sRes.sales);
-      if (purRes.purchases) setPurchases(purRes.purchases);
-      if (qRes.quotations) setQuotations(qRes.quotations);
-      if (eRes.expenses) setExpenses(eRes.expenses);
-      if (kRes.kpis) setKpis(kRes.kpis);
-      if (stRes.staff) setStaff(stRes.staff);
-      if (setRes.profile) setProfile(setRes.profile);
-      if (typeof setRes.isDemoActive === 'boolean') setIsDemoActive(setRes.isDemoActive);
-      if (logRes.logs) setAuditLogs(logRes.logs);
-      if (waRes.history) setSimHistory(waRes.history);
-
-      // Suppliers fallback from store
-      if (cRes.customers && cRes.customers.length > 0 && !posCustomer) {
-        setPosCustomer(cRes.customers[0].id);
-        setPosCustomerName(cRes.customers[0].name);
-        setPosCustomerPhone(cRes.customers[0].phone);
-        setPosCustomerVillage(cRes.customers[0].village);
-      }
-    } catch {
-      console.error('Error loading admin ERP data');
-    } finally {
-      setLoading(false);
-    }
+  // Helper to sync state from in-memory singleton store
+  const syncStoreData = () => {
+    setProducts([...store.getProducts()]);
+    setCustomers([...store.getCustomers()]);
+    setSuppliers([...store.getSuppliers()]);
+    setSales([...store.getSales()]);
+    setPurchases([...store.getPurchases()]);
+    setQuotations([...store.getQuotations()]);
+    setExpenses([...store.getExpenses()]);
+    setKpis({ ...store.getFinancialKPIs() });
+    setProfile(store.getProfile());
+    setMovements([...store.getStockMovements()]);
   };
 
   useEffect(() => {
-    refreshData();
-  }, [currentRole]);
+    syncStoreData();
+  }, []);
 
-  // Switch role handler
-  const handleRoleChange = (role: UserRole) => {
-    setCurrentRole(role);
-    if (role === 'OWNER') {
-      setCurrentUser({ name: 'Shri Krishna Agro Owner', phone: '9800000001' });
-    } else if (role === 'AGRONOMIST') {
-      setCurrentUser({ name: 'Shubham Gamane (B.Sc Agri)', phone: '8605620843' });
-    } else if (role === 'MANAGER') {
-      setCurrentUser({ name: 'Kishor Gite (Store Manager)', phone: '9800000002' });
-    } else if (role === 'CASHIER') {
-      setCurrentUser({ name: 'Prashant Shinde (Cashier)', phone: '9800000003' });
-    } else if (role === 'ACCOUNTANT') {
-      setCurrentUser({ name: 'Suresh Pingle (Accountant)', phone: '9800000004' });
-    }
-  };
+  // POS Calculations
+  const posSubtotal = posItems.reduce((acc, i) => acc + i.quantity * i.unitPrice, 0);
+  const posTax = posItems.reduce((acc, i) => acc + (i.quantity * i.unitPrice * i.gstRate) / 100, 0);
+  const posGrandTotal = Math.round(posSubtotal + posTax - posDiscount);
+  const posBalanceToKhata = Math.max(0, posGrandTotal - posPaidAmount);
 
-  // Add POS item
-  const addPosItem = () => {
-    if (products.length > 0) {
-      const p = products[0];
-      setPosItems([
-        ...posItems,
-        { productId: p.id, quantity: 1, unitPrice: p.sellingPrice, gstRate: p.gstRate },
-      ]);
-    }
-  };
-
-  // Submit POS Sale
-  const handlePosSale = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Handle POS Sale Creation
+  const handleCreateSale = () => {
     if (posItems.length === 0) {
-      alert('कृपया किमान एक उत्पादन जोडा.');
+      setFeedback('⚠️ कृपया बिलामध्ये किमान एक उत्पादन जोडा.');
       return;
     }
 
-    try {
-      const res = await fetch('/api/sales', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          customerId: posCustomer || undefined,
-          customerName: posCustomerName || 'Walk-in Farmer',
-          customerPhone: posCustomerPhone,
-          customerVillage: posCustomerVillage,
-          items: posItems,
-          discountAmount: posDiscount,
-          paymentMethod: posPaymentMethod,
-          paidAmount: posPaidAmount !== undefined ? posPaidAmount : (posPaymentMethod === 'CREDIT' ? 0 : computePosTotal()),
-        }),
-      });
-
-      const data = await res.json();
-      if (data.success) {
-        setFeedback(`✅ विक्री यशस्वी! बिल क्रमांक: ${data.sale.invoiceNumber}`);
-        setPosItems([]);
-        refreshData();
-      } else {
-        alert(data.error || 'विक्री नोंदवण्यात त्रुटी आली.');
-      }
-    } catch {
-      alert('विक्री प्रक्रिया अयशस्वी.');
-    }
-  };
-
-  // Compute POS total
-  const computePosTotal = () => {
-    let sub = 0;
-    let tax = 0;
-    posItems.forEach((it) => {
-      const line = it.quantity * it.unitPrice;
-      sub += line;
-      tax += (line * it.gstRate) / 100;
+    const res = store.createSale({
+      customerId: posCustomer,
+      customerName: posCustomerName || 'शेतकरी ग्राहक',
+      customerPhone: posCustomerPhone || '9800000000',
+      items: posItems,
+      discountAmount: Number(posDiscount) || 0,
+      paymentMethod: posPaymentMethod,
+      paidAmount: Number(posPaidAmount) || 0,
+      createdByName: 'Shri Krishna Admin',
     });
-    return Math.round(sub + tax - posDiscount);
-  };
 
-  // Settle Customer Khata Payment
-  const settlePayment = async (customerId: string, amount: number) => {
-    if (!amount || amount <= 0) return;
-    try {
-      const res = await fetch('/api/customers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'RECORD_PAYMENT',
-          customerId,
-          amount,
-          paymentMethod: 'CASH',
-        }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setFeedback(`✅ पेमेंट जमा झाले. नवीन बाकी: ₹${data.customer.outstandingBalance}`);
-        refreshData();
-      }
-    } catch {
-      alert('पेमेंट नोंदवण्यात त्रुटी आली.');
+    if (res.success && res.sale) {
+      syncStoreData();
+      setFeedback(`✅ बिल #${res.sale.invoiceNumber} यशस्वीपणे तयार झाले! एकूण: ₹${res.sale.grandTotal}, जमा: ₹${res.sale.paidAmount}, उधारी शिल्लक: ₹${res.sale.balanceAmount}`);
+      // Reset items
+      setPosItems([]);
+      setPosDiscount(0);
+      setPosPaidAmount(0);
+    } else {
+      setFeedback(`❌ त्रुटी: ${res.error}`);
     }
   };
 
-  // Record Operating Expense
-  const handleRecordExpense = async (e: React.FormEvent) => {
+  // Handle Adding / Updating Product in Store
+  const handleSaveProduct = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!expAmount || expAmount <= 0) return;
-    try {
-      const res = await fetch('/api/expenses', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          category: expCategory,
-          amount: expAmount,
-          paymentMethod: expMethod,
-          vendor: expVendor,
-          notes: expNotes,
-        }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setFeedback(`✅ खर्च नोंदवला: ₹${data.expense.amount} (${data.expense.category})`);
-        setExpAmount(0);
-        setExpVendor('');
-        setExpNotes('');
-        refreshData();
-      } else {
-        alert(data.error || 'खर्च नोंदवण्यात अडचण आली.');
+    if (!pNameMr || !pSellingPrice) {
+      setFeedback('⚠️ कृपया मराठी नाव व विक्री दर भरा.');
+      return;
+    }
+
+    if (editingProductId) {
+      // Update existing product
+      const existing = store.getProductById(editingProductId);
+      if (existing) {
+        existing.nameMr = pNameMr;
+        existing.nameEn = pNameEn || pNameMr;
+        existing.sellingPrice = Number(pSellingPrice);
+        existing.purchasePrice = Number(pPurchasePrice);
+        existing.totalStock = Number(pInitialStock);
+        existing.minStockLevel = Number(pMinStock);
+        existing.packSize = pPackSize;
+        existing.technicalName = pTechnicalName;
+        existing.targetCrops = pTargetCrops;
+        existing.dosageGuide = pDosageGuide;
+        setFeedback(`✅ उत्पादन "${pNameMr}" यशस्वीपणे अपडेट झाले!`);
       }
-    } catch {
-      alert('त्रुटी आली.');
+    } else {
+      // Create new product
+      const cat = store.getCategories().find((c) => c.id === pCategoryId);
+      const newProd: Product = {
+        id: `prod-${Date.now()}`,
+        nameEn: pNameEn || pNameMr,
+        nameMr: pNameMr,
+        brandId: 'br-1',
+        brandName: pBrandName,
+        categoryId: pCategoryId,
+        categoryNameEn: cat?.nameEn || 'General',
+        categoryNameMr: cat?.nameMr || 'कृषी निविष्ठा',
+        sku: `SKU-${Date.now().toString().slice(-4)}`,
+        hsnCode: '38089000',
+        unit: pUnit,
+        packSize: pPackSize,
+        mrp: Number(pSellingPrice),
+        sellingPrice: Number(pSellingPrice),
+        purchasePrice: Number(pPurchasePrice),
+        gstRate: Number(pGstRate),
+        totalStock: Number(pInitialStock),
+        minStockLevel: Number(pMinStock),
+        isAvailable: true,
+        technicalName: pTechnicalName,
+        targetCrops: pTargetCrops,
+        dosageGuide: pDosageGuide,
+        batches: [
+          {
+            id: `batch-${Date.now()}`,
+            productId: `prod-${Date.now()}`,
+            batchNumber: pBatchNo || 'BATCH-01',
+            mfgDate: new Date().toISOString().slice(0, 10),
+            expiryDate: pExpiryDate || '2027-12-31',
+            purchaseCost: Number(pPurchasePrice),
+            currentStock: Number(pInitialStock),
+            isDemo: true,
+          },
+        ],
+        isDemo: true,
+        createdAt: new Date().toISOString(),
+      };
+
+      store.addProduct(newProd);
+      setFeedback(`✅ नवीन उत्पादन "${pNameMr}" यशस्वीपणे जोडले! साठा: ${pInitialStock} ${pUnit}`);
+    }
+
+    syncStoreData();
+    setProductModalOpen(false);
+    setEditingProductId(null);
+  };
+
+  // Handle Recording Khata Payment from Farmer
+  const handleRecordKhataPayment = () => {
+    if (!selectedKhataCustomer || collectAmount <= 0) {
+      setFeedback('⚠️ कृपया योग्य रक्कम प्रविष्ट करा.');
+      return;
+    }
+
+    const res = store.recordCustomerPayment(
+      selectedKhataCustomer.id,
+      Number(collectAmount),
+      collectNotes || 'काऊंटर रोख भरणा'
+    );
+
+    if (res.success) {
+      syncStoreData();
+      setFeedback(`✅ शेतकरी ${selectedKhataCustomer.name} यांच्या खात्यावर ₹${collectAmount} यशस्वीपणे जमा झाले!`);
+      setPaymentModalOpen(false);
+      setSelectedKhataCustomer(null);
+      setCollectAmount(0);
+    } else {
+      setFeedback(`❌ त्रुटी: ${res.error}`);
     }
   };
 
-  // Submit Owner AI Query
-  const handleOwnerAI = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!aiQuery.trim()) return;
+  // Handle Purchase Inward
+  const handleRecordPurchase = () => {
+    if (purItems.length === 0) {
+      setFeedback('⚠️ खरेदी मालाची यादी रिक्त आहे.');
+      return;
+    }
+
+    const sup = store.getSuppliers().find((s) => s.id === purSupplier) || store.getSuppliers()[0];
+    const res = store.recordPurchase({
+      supplierId: sup.id,
+      supplierName: sup.name,
+      supplierInvoiceNumber: purInvoice || `INV-${Date.now()}`,
+      items: purItems,
+      freightCharges: Number(purFreight) || 0,
+      paidAmount: Number(purPaidAmount) || 0,
+    });
+
+    if (res.success && res.purchase) {
+      syncStoreData();
+      setFeedback(`✅ खरेदी नोंद यशस्वी! बिल #${res.purchase.supplierInvoiceNumber}, एकूण: ₹${res.purchase.grandTotal}, साठा वाढवला गेला.`);
+    } else {
+      setFeedback(`❌ त्रुटी: ${res.error}`);
+    }
+  };
+
+  // Handle Expense Entry
+  const handleRecordExpense = () => {
+    if (expAmount <= 0) {
+      setFeedback('⚠️ कृपया खर्चाची रक्कम भरा.');
+      return;
+    }
+
+    const exp = store.recordExpense({
+      category: expCategory,
+      amount: Number(expAmount),
+      paymentMethod: expMethod,
+      vendor: expVendor || 'इतर खर्च',
+      notes: expNotes,
+      recordedByName: 'Shri Krishna Admin',
+    });
+
+    syncStoreData();
+    setFeedback(`✅ खर्च नोंदवला: ₹${exp.amount} (${exp.category}) - ${exp.vendor}`);
+    setExpAmount(0);
+    setExpNotes('');
+  };
+
+  // Handle AI Query
+  const handleRunAi = async () => {
     setAiLoading(true);
     try {
-      const res = await fetch('/api/ai/owner', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: aiQuery }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setAiResponse(data.result);
-      } else {
-        alert(data.error || 'AI क्वेरी अयशस्वी.');
-      }
+      // Simulate rich agro AI analysis
+      setTimeout(() => {
+        const topProds = store.getProducts().slice(0, 3);
+        setAiResponse({
+          analysis: `📊 श्री कृष्ण ॲग्रो व्यवसाय विश्लेषण:\n\n• एकूण विक्री उत्पन्न: ₹${kpis?.totalRevenue?.toLocaleString('en-IN') || '१,४५,२००'}\n• निव्वळ नफा (Net Profit): ₹${kpis?.netProfit?.toLocaleString('en-IN') || '४२,३५०'}\n• कांदा पिकासाठी महाधन १९:१९:१९ व ०:५२:३४ ची सर्वाधिक मागणी आहे.\n• करपा रोगासाठी नॅटिव्हो व ॲमिस्टार टॉप चा साठा पुरेसा आहे.`,
+          recommendation: 'सध्या कांदा लागवडीचा हंगाम असल्याने १९:१९:१९ व सूक्ष्म अन्नद्रव्यांचा ५० बॅग अतिरिक्त साठा ठेवण्याची शिफारस आहे.',
+        });
+        setAiLoading(false);
+      }, 500);
     } catch {
-      alert('AI कडून प्रतिसाद मिळाला नाही.');
-    } finally {
       setAiLoading(false);
     }
   };
 
-  // Submit WhatsApp Simulator Message
-  const handleSimulateWhatsApp = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Handle WhatsApp Simulator
+  const handleSendSimMessage = () => {
     if (!simMessage.trim()) return;
+    const userMsg = { role: 'user', text: simMessage, timestamp: 'आत्ता' };
+    setSimHistory((prev) => [...prev, userMsg]);
     setSimLoading(true);
-    try {
-      const res = await fetch('/api/whatsapp/webhook', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fromPhone: simPhone,
-          senderName: simName,
-          message: simMessage,
-        }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setSimMessage('');
-        const waRes = await fetch('/api/whatsapp/webhook').then((r) => r.json());
-        if (waRes.history) setSimHistory(waRes.history);
-      }
-    } catch {
-      alert('WhatsApp सिम्युलेटर त्रुटी.');
-    } finally {
+
+    setTimeout(() => {
+      const p = store.getProducts().find((pr) => pr.nameMr.includes('१९:१९:१९') || pr.nameMr.includes('नॅटिव्हो')) || store.getProducts()[0];
+      const botReply = {
+        role: 'assistant',
+        text: `नमस्कार ${simName}! श्री कृष्ण ॲग्रो सर्व्हिसेस कडून:\n• ${p.nameMr} चा चालू दर ₹${p.sellingPrice} (${p.packSize}) आहे.\n• उपलब्ध साठा: ${p.totalStock} ${p.unit}\n• शिफारस: ${p.dosageGuide}\n\nआपण आजच दुकानात येऊन किंवा व्हॉट्सॲपवर ऑर्डर देऊ शकता. अधिक माहितीसाठी B.Sc Agri तज्ञ शुभम गमाणे (८६०५६२०८४३) यांच्याशी संपर्क करा.`,
+        timestamp: 'आत्ता',
+      };
+      setSimHistory((prev) => [...prev, botReply]);
       setSimLoading(false);
-    }
-  };
-
-  // Clean Production DB / Reset Demo
-  const handleDatabaseReset = async (action: 'CLEAN_PRODUCTION' | 'RESET_DEMO') => {
-    const confirmMsg =
-      action === 'CLEAN_PRODUCTION'
-        ? '⚠️ तुम्ही खात्रीशीर आहात? सर्व डेमो डेटा हटवला जाईल आणि स्वच्छ उत्पादन डेटाबेस तयार होईल.'
-        : 'डेमो डेटा पुन्हा रीसेट करायचा आहे का?';
-    if (!confirm(confirmMsg)) return;
-
-    try {
-      const res = await fetch('/api/admin/demo-reset', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        alert(data.message);
-        refreshData();
-      } else {
-        alert(data.error || 'डेटाबेस रीसेट अयशस्वी.');
-      }
-    } catch {
-      alert('त्रुटी आली.');
-    }
+      setSimMessage('');
+    }, 400);
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900 pb-20">
-      {/* Top Header & Role Switcher */}
-      <div className="bg-slate-900 text-white border-b border-slate-800 px-4 sm:px-8 py-3.5">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-agro-700 flex items-center justify-center text-white shadow-agro">
-              <ShieldCheck className="w-6 h-6" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="font-extrabold text-base sm:text-lg">
-                  श्री कृष्ण ॲग्रो सर्व्हिसेस — ERP Operating System
-                </h1>
-                <span className="bg-emerald-500/20 text-emerald-300 text-[10px] px-2 py-0.5 rounded font-bold border border-emerald-500/30">
-                  {isDemoActive ? '🟡 DEMO MODE' : '🟢 PRODUCTION MODE'}
-                </span>
-              </div>
-              <p className="text-xs text-slate-400">
-                सिन्नर, नाशिक • लॉग इन: <strong>{currentUser.name}</strong> ({currentRole})
-              </p>
-            </div>
+    <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
+      {/* Top Header */}
+      <div className="bg-gradient-to-r from-agro-950 via-agro-900 to-agro-800 text-white rounded-3xl p-5 sm:p-7 shadow-agro-lg flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <div className="inline-flex items-center gap-2 bg-emerald-800/80 text-emerald-300 text-xs font-bold px-3 py-1 rounded-full border border-emerald-600/40 mb-2">
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>श्री कृष्ण ॲग्रो सर्व्हिसेस • मुख्य व्यवस्थापन डॅशबोर्ड</span>
           </div>
+          <h1 className="text-xl sm:text-3xl font-extrabold tracking-tight">
+            ERP, इन्व्हेंटरी, काऊंटर बिलिंग व शेतकरी उधारी व्यवस्थापन
+          </h1>
+          <p className="text-xs sm:text-sm text-emerald-100/90 mt-1">
+            सिन्नर, जि. नाशिक • प्रोप्रा. आकाश खताळे • कृषी सल्लागार: शुभम गमाणे व जगदीश बोडके
+          </p>
+        </div>
 
-          {/* Role Switcher Toolbar */}
-          <div className="flex items-center gap-2 bg-slate-800 p-1 rounded-xl text-xs font-bold">
-            <span className="px-2 text-slate-400 flex items-center gap-1">
-              <UserCheck className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Role:</span>
-            </span>
-            {(['OWNER', 'MANAGER', 'AGRONOMIST', 'CASHIER', 'ACCOUNTANT'] as UserRole[]).map((r) => (
-              <button
-                key={r}
-                onClick={() => handleRoleChange(r)}
-                className={`px-2.5 py-1 rounded-lg transition ${
-                  currentRole === r
-                    ? 'bg-agro-700 text-white shadow-sm'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-700/60'
-                }`}
-              >
-                {r}
-              </button>
-            ))}
-          </div>
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <button
+            onClick={() => {
+              store.resetDemoData();
+              syncStoreData();
+              setFeedback('🔄 सर्व प्रात्यक्षिक डेटा मूळ स्थितीत रिसेट केला गेला.');
+            }}
+            className="flex-1 sm:flex-initial bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl border border-white/20 transition flex items-center justify-center gap-1.5"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            <span>डेटा रिफ्रेश</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setEditingProductId(null);
+              setPNameMr('');
+              setPNameEn('');
+              setPSellingPrice(200);
+              setPPurchasePrice(160);
+              setPInitialStock(50);
+              setPTechnicalName('');
+              setProductModalOpen(true);
+            }}
+            className="flex-1 sm:flex-initial bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-extrabold px-4 py-2.5 rounded-xl transition shadow-md flex items-center justify-center gap-1.5"
+          >
+            <Plus className="w-4 h-4" />
+            <span>नवीन उत्पादन जोडा</span>
+          </button>
         </div>
       </div>
 
-      {/* Main ERP Layout Container */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6">
-        {/* Feedback Alert if any */}
-        {feedback && (
-          <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-2.5 rounded-xl text-xs font-bold flex justify-between items-center shadow-sm">
+      {/* Live Feedback Alert Toast */}
+      {feedback && (
+        <div className="bg-emerald-950 border border-emerald-500 text-emerald-100 text-xs sm:text-sm font-semibold p-4 rounded-2xl flex items-center justify-between shadow-md">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
             <span>{feedback}</span>
-            <button onClick={() => setFeedback('')} className="text-emerald-950 font-extrabold">✕</button>
           </div>
-        )}
-
-        {/* ------------------------------------------------------------- */}
-        {/* TOP KPI OVERVIEW CARDS */}
-        {/* ------------------------------------------------------------- */}
-        {kpis ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
-            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-1">
-              <p className="text-[11px] font-bold text-slate-500 uppercase">एकूण महसूल (Revenue)</p>
-              <p className="text-lg font-extrabold text-slate-900">₹{kpis.totalRevenue.toLocaleString('en-IN')}</p>
-              <p className="text-[10px] text-slate-400">रोख: ₹{kpis.cashRevenue} | UPI: ₹{kpis.upiRevenue}</p>
-            </div>
-
-            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-1">
-              <p className="text-[11px] font-bold text-slate-500 uppercase">माल खरेदी खर्च (COGS)</p>
-              <p className="text-lg font-extrabold text-slate-700">₹{kpis.totalCOGS.toLocaleString('en-IN')}</p>
-              <p className="text-[10px] text-slate-400">ढोबळ नफा: ₹{kpis.grossProfit}</p>
-            </div>
-
-            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-1">
-              <p className="text-[11px] font-bold text-slate-500 uppercase">दुकान खर्च (Expenses)</p>
-              <p className="text-lg font-extrabold text-red-600">₹{kpis.totalExpenses.toLocaleString('en-IN')}</p>
-              <p className="text-[10px] text-slate-400">भाडे, वीज, ट्रान्सपोर्ट</p>
-            </div>
-
-            <div className="bg-emerald-900 text-white p-4 rounded-2xl shadow-sm space-y-1 border border-emerald-800">
-              <p className="text-[11px] font-bold text-emerald-300 uppercase">निव्वळ नफा (Net Profit)</p>
-              <p className="text-xl font-black text-white">₹{kpis.netProfit.toLocaleString('en-IN')}</p>
-              <p className="text-[10px] text-emerald-200">मार्जिन: {kpis.netMarginPercent}%</p>
-            </div>
-
-            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-1">
-              <p className="text-[11px] font-bold text-slate-500 uppercase">शेतकरी उधारी (Khata)</p>
-              <p className="text-lg font-extrabold text-amber-700">₹{kpis.creditOutstanding.toLocaleString('en-IN')}</p>
-              <p className="text-[10px] text-slate-400">सप्लायर देणे: ₹{kpis.supplierPayables}</p>
-            </div>
-
-            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-1">
-              <p className="text-[11px] font-bold text-slate-500 uppercase">स्टॉक अलर्ट</p>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold bg-amber-100 text-amber-900 px-2 py-0.5 rounded">
-                  कमी: {kpis.lowStockCount}
-                </span>
-                <span className="text-xs font-bold bg-red-100 text-red-900 px-2 py-0.5 rounded">
-                  मुदत: {kpis.expiringBatchesCount}
-                </span>
-              </div>
-              <p className="text-[10px] text-slate-400">एकूण माल मूल्य: ₹{kpis.totalInventoryValue.toLocaleString('en-IN')}</p>
-            </div>
-          </div>
-        ) : (
-          <div className="bg-amber-50 border border-amber-200 text-amber-900 p-4 rounded-2xl text-xs flex items-center justify-between">
-            <span>🔒 नफा व महसूल अहवाल फक्त Owner व Accountant भूमिकेसाठी उपलब्ध आहेत.</span>
-            <button onClick={() => handleRoleChange('OWNER')} className="font-bold underline">
-              Owner Mode चालू करा
-            </button>
-          </div>
-        )}
-
-        {/* ------------------------------------------------------------- */}
-        {/* MASTER ERP NAVIGATION TABS */}
-        {/* ------------------------------------------------------------- */}
-        <div className="bg-white rounded-2xl p-2 border border-slate-200 shadow-sm flex items-center gap-1.5 overflow-x-auto scrollbar-none text-xs font-bold text-slate-700">
-          <button
-            onClick={() => setActiveTab('dashboard')}
-            className={`px-3.5 py-2 rounded-xl flex items-center gap-1.5 whitespace-nowrap transition ${
-              activeTab === 'dashboard' ? 'bg-agro-800 text-white' : 'hover:bg-slate-100'
-            }`}
-          >
-            <TrendingUp className="w-4 h-4" />
-            <span>डॅशबोर्ड (Overview)</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('pos')}
-            className={`px-3.5 py-2 rounded-xl flex items-center gap-1.5 whitespace-nowrap transition ${
-              activeTab === 'pos' ? 'bg-agro-800 text-white' : 'hover:bg-slate-100'
-            }`}
-          >
-            <ShoppingCart className="w-4 h-4" />
-            <span>विक्री काऊंटर (POS Sale)</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('inventory')}
-            className={`px-3.5 py-2 rounded-xl flex items-center gap-1.5 whitespace-nowrap transition ${
-              activeTab === 'inventory' ? 'bg-agro-800 text-white' : 'hover:bg-slate-100'
-            }`}
-          >
-            <Package className="w-4 h-4" />
-            <span>स्टॉक व बॅचेस (Inventory)</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('purchases')}
-            className={`px-3.5 py-2 rounded-xl flex items-center gap-1.5 whitespace-nowrap transition ${
-              activeTab === 'purchases' ? 'bg-agro-800 text-white' : 'hover:bg-slate-100'
-            }`}
-          >
-            <Truck className="w-4 h-4" />
-            <span>खरेदी नोंद (Purchases)</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('customers')}
-            className={`px-3.5 py-2 rounded-xl flex items-center gap-1.5 whitespace-nowrap transition ${
-              activeTab === 'customers' ? 'bg-agro-800 text-white' : 'hover:bg-slate-100'
-            }`}
-          >
-            <Users className="w-4 h-4" />
-            <span>शेतकरी उधारी (Khata CRM)</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('quotations')}
-            className={`px-3.5 py-2 rounded-xl flex items-center gap-1.5 whitespace-nowrap transition ${
-              activeTab === 'quotations' ? 'bg-agro-800 text-white' : 'hover:bg-slate-100'
-            }`}
-          >
-            <FileText className="w-4 h-4" />
-            <span>कोटेशन्स (Quotations)</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('expenses')}
-            className={`px-3.5 py-2 rounded-xl flex items-center gap-1.5 whitespace-nowrap transition ${
-              activeTab === 'expenses' ? 'bg-agro-800 text-white' : 'hover:bg-slate-100'
-            }`}
-          >
-            <DollarSign className="w-4 h-4" />
-            <span>दुकान खर्च (Expenses)</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('whatsapp')}
-            className={`px-3.5 py-2 rounded-xl flex items-center gap-1.5 whitespace-nowrap transition ${
-              activeTab === 'whatsapp' ? 'bg-agro-800 text-white' : 'hover:bg-slate-100'
-            }`}
-          >
-            <MessageCircle className="w-4 h-4" />
-            <span>WhatsApp AI हब</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('owner_ai')}
-            className={`px-3.5 py-2 rounded-xl flex items-center gap-1.5 whitespace-nowrap transition ${
-              activeTab === 'owner_ai' ? 'bg-agro-800 text-white' : 'hover:bg-slate-100'
-            }`}
-          >
-            <Bot className="w-4 h-4" />
-            <span>Owner AI असिस्टंट</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('staff')}
-            className={`px-3.5 py-2 rounded-xl flex items-center gap-1.5 whitespace-nowrap transition ${
-              activeTab === 'staff' ? 'bg-agro-800 text-white' : 'hover:bg-slate-100'
-            }`}
-          >
-            <UserCheck className="w-4 h-4" />
-            <span>कर्मचारी व भूमिका (Staff)</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('audit')}
-            className={`px-3.5 py-2 rounded-xl flex items-center gap-1.5 whitespace-nowrap transition ${
-              activeTab === 'audit' ? 'bg-agro-800 text-white' : 'hover:bg-slate-100'
-            }`}
-          >
-            <History className="w-4 h-4" />
-            <span>ऑडिट ट्रेल (Logs)</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('settings')}
-            className={`px-3.5 py-2 rounded-xl flex items-center gap-1.5 whitespace-nowrap transition ${
-              activeTab === 'settings' ? 'bg-agro-800 text-white' : 'hover:bg-slate-100'
-            }`}
-          >
-            <Settings className="w-4 h-4" />
-            <span>ऑनबोर्डिंग व सेटिंग्ज</span>
+          <button onClick={() => setFeedback('')} className="text-emerald-400 font-bold hover:text-white ml-2">
+            ✕
           </button>
         </div>
+      )}
 
-        {/* ------------------------------------------------------------- */}
-        {/* TAB 1: POS SALES BILLING COUNTER */}
-        {/* ------------------------------------------------------------- */}
-        {activeTab === 'pos' && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            <div className="lg:col-span-8 bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-5">
-              <div className="flex justify-between items-center pb-3 border-b border-slate-100">
-                <h3 className="font-extrabold text-base text-slate-900 flex items-center gap-2">
-                  <ShoppingCart className="w-5 h-5 text-agro-700" />
-                  <span>नवीन विक्री बिल तयार करा (POS Billing)</span>
+      {/* Navigation Tabs Bar */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none text-xs font-bold">
+        {[
+          { id: 'dashboard', label: 'डॅशबोर्ड व आढावा', icon: TrendingUp },
+          { id: 'pos', label: 'काऊंटर बिलिंग (POS)', icon: ShoppingCart },
+          { id: 'inventory', label: `इन्व्हेंटरी व साठा (${products.length})`, icon: Package },
+          { id: 'customers', label: `शेतकरी उधारी खाती (${customers.length})`, icon: Users },
+          { id: 'purchases', label: 'खरेदी माल नोंद (Inward)', icon: Truck },
+          { id: 'expenses', label: 'दुकान खर्च', icon: DollarSign },
+          { id: 'financials', label: 'नफा-तोटा व बॅलन्स शीट', icon: FileText },
+          { id: 'whatsapp', label: 'WhatsApp बॉट सिम्युलेटर', icon: MessageCircle },
+          { id: 'owner_ai', label: 'AI कृषी सल्लागार', icon: Bot },
+        ].map((tab) => {
+          const Icon = tab.icon;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`px-4 py-2.5 rounded-xl whitespace-nowrap transition flex items-center gap-1.5 shadow-sm ${
+                activeTab === tab.id
+                  ? 'bg-agro-800 text-white shadow'
+                  : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              <Icon className="w-3.5 h-3.5 text-agro-700 group-hover:text-white" />
+              <span>{tab.label}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ------------------------------------------------------------- */}
+      {/* 1. DASHBOARD OVERVIEW TAB */}
+      {/* ------------------------------------------------------------- */}
+      {activeTab === 'dashboard' && (
+        <div className="space-y-6">
+          {/* Key KPI Cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-sm space-y-1">
+              <div className="flex justify-between items-center text-slate-500 text-xs font-bold">
+                <span>एकूण विक्री उत्पन्न</span>
+                <TrendingUp className="w-4 h-4 text-emerald-600" />
+              </div>
+              <p className="text-xl sm:text-2xl font-extrabold text-slate-900">
+                ₹{kpis?.totalRevenue?.toLocaleString('en-IN') || '०'}
+              </p>
+              <p className="text-[11px] text-emerald-700 font-semibold">
+                {sales.length} बिले पूर्ण
+              </p>
+            </div>
+
+            <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-sm space-y-1">
+              <div className="flex justify-between items-center text-slate-500 text-xs font-bold">
+                <span>निव्वळ नफा (Net Profit)</span>
+                <DollarSign className="w-4 h-4 text-agro-700" />
+              </div>
+              <p className="text-xl sm:text-2xl font-extrabold text-emerald-800">
+                ₹{kpis?.netProfit?.toLocaleString('en-IN') || '०'}
+              </p>
+              <p className="text-[11px] text-slate-500">
+                विक्री - मालखर्च - दुकानखर्च
+              </p>
+            </div>
+
+            <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-sm space-y-1">
+              <div className="flex justify-between items-center text-slate-500 text-xs font-bold">
+                <span>शेतकरी उधारी येणे (Khata)</span>
+                <Users className="w-4 h-4 text-amber-600" />
+              </div>
+              <p className="text-xl sm:text-2xl font-extrabold text-amber-800">
+                ₹{kpis?.totalReceivables?.toLocaleString('en-IN') || '०'}
+              </p>
+              <p className="text-[11px] text-amber-700 font-semibold">
+                {customers.filter((c) => c.outstandingBalance > 0).length} शेतकऱ्यांकडे उधारी शिल्लक
+              </p>
+            </div>
+
+            <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-sm space-y-1">
+              <div className="flex justify-between items-center text-slate-500 text-xs font-bold">
+                <span>साठा संपत आलेली उत्पादने</span>
+                <AlertTriangle className="w-4 h-4 text-rose-600" />
+              </div>
+              <p className="text-xl sm:text-2xl font-extrabold text-rose-800">
+                {kpis?.lowStockItems?.length || 0}
+              </p>
+              <p className="text-[11px] text-rose-700 font-semibold">
+                तात्काळ पुनर्नोंद आवश्यक
+              </p>
+            </div>
+          </div>
+
+          {/* Quick Actions & Recent Sales Table */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-4">
+              <div className="flex justify-between items-center">
+                <h3 className="font-extrabold text-slate-900 text-sm sm:text-base">
+                  अलिकडील काऊंटर बिले (Recent Sales)
                 </h3>
-                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg">
-                  Billing Operator: {currentUser.name}
-                </span>
-              </div>
-
-              {/* Customer Selector */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">ग्राहक निवडा / नवीन</label>
-                  <select
-                    value={posCustomer}
-                    onChange={(e) => {
-                      const cId = e.target.value;
-                      setPosCustomer(cId);
-                      const c = customers.find((cust) => cust.id === cId);
-                      if (c) {
-                        setPosCustomerName(c.name);
-                        setPosCustomerPhone(c.phone);
-                        setPosCustomerVillage(c.village);
-                      } else {
-                        setPosCustomerName('');
-                      }
-                    }}
-                    className="w-full border border-slate-300 rounded-lg p-2 bg-white"
-                  >
-                    <option value="">Walk-in Customer (थेट शेतकरी)</option>
-                    {customers.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name} ({c.village}) — उधारी: ₹{c.outstandingBalance}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">नाव</label>
-                  <input
-                    type="text"
-                    value={posCustomerName}
-                    onChange={(e) => setPosCustomerName(e.target.value)}
-                    placeholder="शेतकऱ्याचे नाव"
-                    className="w-full border border-slate-300 rounded-lg p-2"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">मोबाईल</label>
-                  <input
-                    type="tel"
-                    value={posCustomerPhone}
-                    onChange={(e) => setPosCustomerPhone(e.target.value)}
-                    placeholder="98XXXXXXXX"
-                    className="w-full border border-slate-300 rounded-lg p-2"
-                  />
-                </div>
-              </div>
-
-              {/* Items Counter */}
-              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="font-bold text-xs text-slate-800">उत्पादने (Product Items)</span>
-                  <button
-                    type="button"
-                    onClick={addPosItem}
-                    className="bg-agro-700 hover:bg-agro-800 text-white text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>आयटम जोडा</span>
-                  </button>
-                </div>
-
-                {posItems.length === 0 ? (
-                  <p className="text-xs text-slate-500 py-4 text-center">
-                    बिल बनवण्यासाठी &quot;आयटम जोडा&quot; बटणावर क्लिक करा.
-                  </p>
-                ) : (
-                  posItems.map((it, idx) => {
-                    const sel = products.find((p) => p.id === it.productId);
-                    return (
-                      <div
-                        key={idx}
-                        className="bg-white p-2.5 rounded-xl border border-slate-200 flex flex-wrap sm:flex-nowrap items-center gap-2 text-xs"
-                      >
-                        <select
-                          value={it.productId}
-                          onChange={(e) => {
-                            const pId = e.target.value;
-                            const next = [...posItems];
-                            const p = products.find((prod) => prod.id === pId);
-                            next[idx].productId = pId;
-                            if (p) {
-                              next[idx].unitPrice = p.sellingPrice;
-                              next[idx].gstRate = p.gstRate;
-                            }
-                            setPosItems(next);
-                          }}
-                          className="flex-1 border border-slate-200 rounded p-1.5 bg-white font-medium"
-                        >
-                          {products.map((p) => (
-                            <option key={p.id} value={p.id}>
-                              {p.nameMr} ({p.packSize}) — शिल्लक: {p.totalStock} {p.unit}
-                            </option>
-                          ))}
-                        </select>
-
-                        <div className="flex items-center gap-1">
-                          <label className="text-[10px] text-slate-500">नग:</label>
-                          <input
-                            type="number"
-                            min="1"
-                            max={sel?.totalStock || 100}
-                            value={it.quantity}
-                            onChange={(e) => {
-                              const next = [...posItems];
-                              next[idx].quantity = Number(e.target.value);
-                              setPosItems(next);
-                            }}
-                            className="w-14 border border-slate-200 rounded p-1.5 text-center font-bold"
-                          />
-                        </div>
-
-                        <div className="flex items-center gap-1">
-                          <label className="text-[10px] text-slate-500">दर ₹:</label>
-                          <input
-                            type="number"
-                            value={it.unitPrice}
-                            onChange={(e) => {
-                              const next = [...posItems];
-                              next[idx].unitPrice = Number(e.target.value);
-                              setPosItems(next);
-                            }}
-                            className="w-20 border border-slate-200 rounded p-1.5 text-center font-bold"
-                          />
-                        </div>
-
-                        <span className="font-extrabold text-agro-900 min-w-[70px] text-right">
-                          ₹{((it.quantity * it.unitPrice) * (1 + it.gstRate / 100)).toFixed(0)}
-                        </span>
-
-                        <button
-                          type="button"
-                          onClick={() => setPosItems(posItems.filter((_, i) => i !== idx))}
-                          className="text-red-500 hover:text-red-700 p-1"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-
-              {/* Payment Method, Discount & Partial Payment Input */}
-              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">पेमेंट प्रकार (Payment Method)</label>
-                    <select
-                      value={posPaymentMethod}
-                      onChange={(e) => setPosPaymentMethod(e.target.value as any)}
-                      className="w-full border border-slate-300 rounded-lg p-2 bg-white font-bold"
-                    >
-                      <option value="CASH">💵 रोख (Cash)</option>
-                      <option value="UPI">📱 UPI / QR Code</option>
-                      <option value="BANK_TRANSFER">🏦 बँक ट्रान्सफर</option>
-                      <option value="CREDIT">📋 पूर्ण उधारी (Full Credit)</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">सूट / डिस्काउंट ₹</label>
-                    <input
-                      type="number"
-                      value={posDiscount}
-                      onChange={(e) => setPosDiscount(Number(e.target.value))}
-                      className="w-full border border-slate-300 rounded-lg p-2"
-                      placeholder="0"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">आता जमा केलेली रक्कम ₹ (Paid Now)</label>
-                    <input
-                      type="number"
-                      value={posPaidAmount !== undefined ? posPaidAmount : computePosTotal()}
-                      onChange={(e) => setPosPaidAmount(Number(e.target.value))}
-                      className="w-full border border-slate-300 rounded-lg p-2 font-bold text-agro-900 bg-white"
-                      placeholder="उदा. अर्धी रक्कम किंवा पूर्ण रक्कम"
-                    />
-                  </div>
-                </div>
-
-                {/* Live Split Calculation & Khata Balance Display */}
-                {(() => {
-                  const total = computePosTotal();
-                  const paid = posPaidAmount !== undefined ? posPaidAmount : (posPaymentMethod === 'CREDIT' ? 0 : total);
-                  const remaining = Math.max(0, total - paid);
-                  return (
-                    <div className="pt-2 border-t border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
-                      <div className="bg-white p-2.5 rounded-xl border border-slate-200">
-                        <span className="text-slate-500 block text-[11px]">एकूण बिल रक्कम:</span>
-                        <strong className="text-sm text-slate-900">₹{total.toLocaleString('en-IN')}</strong>
-                      </div>
-                      <div className="bg-emerald-50 p-2.5 rounded-xl border border-emerald-200">
-                        <span className="text-emerald-700 block text-[11px]">आता जमा (Paid):</span>
-                        <strong className="text-sm text-emerald-800">₹{paid.toLocaleString('en-IN')}</strong>
-                      </div>
-                      <div className={`p-2.5 rounded-xl border ${remaining > 0 ? 'bg-amber-50 border-amber-300' : 'bg-slate-100 border-slate-200'}`}>
-                        <span className="text-slate-600 block text-[11px]">शिल्लक उधारी (Khata Balance):</span>
-                        <strong className={`text-sm ${remaining > 0 ? 'text-amber-900 font-extrabold' : 'text-slate-700'}`}>
-                          ₹{remaining.toLocaleString('en-IN')}
-                        </strong>
-                        {remaining > 0 && (
-                          <span className="block text-[10px] text-amber-800 font-medium mt-0.5">
-                            👉 ही रक्कम शेतकऱ्याच्या खात्यात नोंदवली जाईल.
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })()}
-              </div>
-
-              <div className="flex flex-col sm:flex-row justify-between items-center gap-3 pt-2">
-                <span className="font-extrabold text-sm text-slate-700">
-                  निवडलेला शेतकरी: <span className="text-agro-800 font-bold">{posCustomerName || 'Walk-in Farmer'}</span>
-                </span>
                 <button
-                  type="button"
-                  onClick={handlePosSale}
-                  className="w-full sm:w-auto bg-gradient-to-r from-agro-700 to-agro-900 text-white font-bold px-6 py-3 rounded-xl hover:from-agro-800 hover:to-agro-950 transition shadow-agro flex items-center justify-center gap-2 text-xs"
+                  onClick={() => setActiveTab('pos')}
+                  className="text-agro-700 hover:text-agro-900 text-xs font-bold flex items-center gap-1"
                 >
-                  <Printer className="w-4 h-4" />
-                  <span>बिल पूर्ण करा व पावती प्रिंट करा</span>
+                  <span>नवीन बिल बनवा</span>
+                  <Plus className="w-3.5 h-3.5" />
                 </button>
               </div>
-            </div>
 
-            {/* Right: Recent Invoices List */}
-            <div className="lg:col-span-4 bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-4">
-              <h4 className="font-bold text-sm text-slate-900 pb-2 border-b border-slate-100">
-                नुकतीच झालेली बिले (Recent Invoices)
-              </h4>
-              <div className="space-y-2.5 max-h-96 overflow-y-auto">
-                {sales.map((s) => (
-                  <div key={s.id} className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs space-y-1">
-                    <div className="flex justify-between font-bold">
-                      <span>{s.invoiceNumber}</span>
-                      <span className="text-agro-800">₹{s.grandTotal}</span>
-                    </div>
-                    <div className="flex justify-between text-[11px] text-slate-500">
-                      <span>{s.customerName}</span>
-                      <span className="font-semibold text-emerald-700">{s.paymentMethod} ({s.paymentStatus})</span>
-                    </div>
-                    <div className="pt-1 flex justify-end">
-                      <a
-                        href={`/api/sales/${s.id}?format=html`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-agro-700 hover:underline font-bold text-[11px] flex items-center gap-1"
-                      >
-                        <Printer className="w-3 h-3" />
-                        <span>पावती प्रिंट</span>
-                      </a>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ------------------------------------------------------------- */}
-        {/* TAB 2: INVENTORY & BATCH / EXPIRY MANAGEMENT */}
-        {/* ------------------------------------------------------------- */}
-        {activeTab === 'inventory' && (
-          <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
-              <div>
-                <h3 className="font-extrabold text-lg text-slate-900 flex items-center gap-2">
-                  <Package className="w-5 h-5 text-agro-700" />
-                  <span>केंद्रीय इन्व्हेंटरी, बॅचेस व एक्सपायरी ट्रॅकिंग</span>
-                </h3>
-                <p className="text-xs text-slate-500">
-                  प्रत्येक स्टॉक बदल अपरिवर्तनीय (Immutable) स्टॉक मूव्हमेंट लेजर द्वारे नोंदवला जातो.
-                </p>
-              </div>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
-                    <th className="p-3">उत्पादन नाव (Product)</th>
-                    <th className="p-3">कंपनी</th>
-                    <th className="p-3">पॅकिंग</th>
-                    <th className="p-3">बॅच क्र.</th>
-                    <th className="p-3">मुदत तारीख (Expiry)</th>
-                    <th className="p-3">दर (MRP / Sell)</th>
-                    <th className="p-3">उपलब्ध स्टॉक</th>
-                    <th className="p-3">स्थिती</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 font-medium">
-                  {products.map((p) => {
-                    const batch = p.batches?.[0];
-                    const isLow = p.totalStock <= p.minStockLevel;
-                    return (
-                      <tr key={p.id} className="hover:bg-slate-50">
-                        <td className="p-3 font-bold text-slate-900">{p.nameMr}</td>
-                        <td className="p-3 text-slate-600">{p.brandName}</td>
-                        <td className="p-3">{p.packSize}</td>
-                        <td className="p-3 font-mono">{batch?.batchNumber || '-'}</td>
-                        <td className="p-3">
-                          {batch?.expiryDate ? (
-                            <span className="font-mono text-slate-700">{batch.expiryDate}</span>
-                          ) : (
-                            '-'
-                          )}
-                        </td>
-                        <td className="p-3">
-                          <span className="line-through text-slate-400">₹{p.mrp}</span> /{' '}
-                          <strong className="text-agro-800">₹{p.sellingPrice}</strong>
-                        </td>
-                        <td className="p-3 font-extrabold text-slate-900">
-                          {p.totalStock} {p.unit}
-                        </td>
-                        <td className="p-3">
-                          {isLow ? (
-                            <span className="bg-red-100 text-red-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                              ⚠️ कमी स्टॉक ({p.minStockLevel})
-                            </span>
-                          ) : (
-                            <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                              ✅ मुबलक
-                            </span>
-                          )}
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
+                    <tr>
+                      <th className="p-2.5">बिल #</th>
+                      <th className="p-2.5">शेतकरी नाव</th>
+                      <th className="p-2.5">एकूण बिल</th>
+                      <th className="p-2.5">जमा रक्कम</th>
+                      <th className="p-2.5">उधारी शिल्लक</th>
+                      <th className="p-2.5">स्थिती</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {sales.slice(0, 5).map((s) => (
+                      <tr key={s.id} className="hover:bg-slate-50/80">
+                        <td className="p-2.5 font-bold text-agro-900">{s.invoiceNumber}</td>
+                        <td className="p-2.5 font-semibold text-slate-800">{s.customerName}</td>
+                        <td className="p-2.5 font-bold">₹{s.grandTotal}</td>
+                        <td className="p-2.5 text-emerald-800 font-bold">₹{s.paidAmount}</td>
+                        <td className="p-2.5 text-amber-800 font-bold">₹{s.balanceAmount}</td>
+                        <td className="p-2.5">
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              s.paymentStatus === 'PAID'
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : s.paymentStatus === 'PARTIAL'
+                                ? 'bg-amber-100 text-amber-800'
+                                : 'bg-rose-100 text-rose-800'
+                            }`}
+                          >
+                            {s.paymentStatus === 'PAID'
+                              ? 'पूर्ण जमा'
+                              : s.paymentStatus === 'PARTIAL'
+                              ? 'अर्धे जमा'
+                              : 'उधारी'}
+                          </span>
                         </td>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {/* ------------------------------------------------------------- */}
-        {/* TAB 3: PURCHASES & LANDED COST */}
-        {/* ------------------------------------------------------------- */}
-        {activeTab === 'purchases' && (
-          <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-6">
-            <div className="flex justify-between items-center pb-3 border-b border-slate-100">
-              <div>
-                <h3 className="font-extrabold text-lg text-slate-900 flex items-center gap-2">
-                  <Truck className="w-5 h-5 text-agro-700" />
-                  <span>खरेदी नोंदी व लँडेड कॉस्टिंग (Purchases)</span>
-                </h3>
-                <p className="text-xs text-slate-500">
-                  नवीन मालाची आवक, बॅच नोंद, GST व ट्रान्सपोर्ट खर्च समावेश.
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              {purchases.length === 0 ? (
-                <p className="text-xs text-slate-500 text-center py-8">खरेदी नोंदी उपलब्ध नाहीत.</p>
-              ) : (
-                purchases.map((pur) => (
-                  <div key={pur.id} className="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-xs space-y-2">
-                    <div className="flex justify-between font-bold text-slate-900">
-                      <span>इनव्हॉइस: {pur.invoiceNumber} ({pur.supplierName})</span>
-                      <span className="text-agro-800 font-extrabold">एकूण: ₹{pur.grandTotal.toLocaleString('en-IN')}</span>
-                    </div>
-                    <p className="text-slate-500">
-                      मालाची किंमत: ₹{pur.subtotal} | GST: ₹{pur.taxAmount} | ट्रान्सपोर्ट: ₹{pur.freightCost} | पेमेंट: {pur.paymentMethod}
-                    </p>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* ------------------------------------------------------------- */}
-        {/* TAB 4: FARMER CRM & KHATA (CREDIT) */}
-        {/* ------------------------------------------------------------- */}
-        {activeTab === 'customers' && (
-          <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-6">
-            <div className="flex justify-between items-center pb-3 border-b border-slate-100">
-              <div>
-                <h3 className="font-extrabold text-lg text-slate-900 flex items-center gap-2">
-                  <Users className="w-5 h-5 text-agro-700" />
-                  <span>शेतकरी खातेवही व उधारी व्यवस्थापन (Farmer Khata CRM)</span>
-                </h3>
-                <p className="text-xs text-slate-500">
-                  सिन्नर परिसरातील शेतकऱ्यांची पिके, जमीन क्षेत्र व थकबाकी ट्रॅकिंग.
-                </p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {customers.map((c) => (
-                <div key={c.id} className="bg-slate-50 p-5 rounded-2xl border border-slate-200 text-xs space-y-3">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h4 className="font-bold text-sm text-slate-900">{c.name}</h4>
-                      <p className="text-slate-500">📍 {c.village}, सिन्नर • 📞 {c.phone}</p>
-                    </div>
-                    <span
-                      className={`font-extrabold px-2 py-0.5 rounded text-[11px] ${
-                        c.outstandingBalance > 0 ? 'bg-amber-100 text-amber-900' : 'bg-emerald-100 text-emerald-900'
-                      }`}
-                    >
-                      बाकी: ₹{c.outstandingBalance.toLocaleString('en-IN')}
-                    </span>
-                  </div>
-
-                  <div className="text-[11px] bg-white p-2.5 rounded-xl border border-slate-200 space-y-1">
-                    <p className="font-bold text-slate-700">पिके व क्षेत्र (Crops):</p>
-                    {c.crops?.map((cr, idx) => (
-                      <p key={idx} className="text-slate-600">
-                        • {cr.cropName} ({cr.acreage} एकर)
-                      </p>
                     ))}
-                  </div>
+                  </tbody>
+                </table>
+              </div>
+            </div>
 
-                  <div className="flex gap-2 pt-1">
-                    {c.outstandingBalance > 0 && (
-                      <>
-                        <button
-                          onClick={() => {
-                            const amt = prompt(`${c.name} कडून जमा रक्कम टाका (₹):`, `${c.outstandingBalance}`);
-                            if (amt) settlePayment(c.id, Number(amt));
-                          }}
-                          className="flex-1 bg-agro-700 hover:bg-agro-800 text-white font-bold py-1.5 rounded-lg text-center"
-                        >
-                          पेमेंट जमा करा
-                        </button>
+            {/* Quick Agro Alerts */}
+            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-4">
+              <h3 className="font-extrabold text-slate-900 text-sm">कृषी इन्व्हेंटरी सूचना</h3>
+              <div className="space-y-3 text-xs">
+                {products
+                  .filter((p) => p.totalStock <= p.minStockLevel)
+                  .map((p) => (
+                    <div key={p.id} className="p-3 rounded-xl bg-amber-50 border border-amber-200 flex justify-between items-center">
+                      <div>
+                        <p className="font-bold text-amber-950">{p.nameMr}</p>
+                        <p className="text-[11px] text-amber-800">
+                          साठा: <strong>{p.totalStock} {p.unit}</strong> (किमान मर्यादा: {p.minStockLevel})
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setPurItems([
+                            {
+                              productId: p.id,
+                              batchNumber: `BAT-${Date.now().toString().slice(-4)}`,
+                              mfgDate: new Date().toISOString().slice(0, 10),
+                              expiryDate: '2027-12-31',
+                              quantity: 30,
+                              unitCost: p.purchasePrice,
+                              gstRate: p.gstRate,
+                            },
+                          ]);
+                          setActiveTab('purchases');
+                        }}
+                        className="bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold px-2.5 py-1 rounded-lg"
+                      >
+                        मागणी करा
+                      </button>
+                    </div>
+                  ))}
+
+                <div className="p-3.5 bg-emerald-50 rounded-xl border border-emerald-200">
+                  <p className="font-bold text-emerald-950">💡 B.Sc Agri सल्ला टिप:</p>
+                  <p className="text-[11px] text-emerald-800 mt-1">
+                    सध्या कांद्याची लागवड सुरू असल्याने १९:१९:१९ व १२:६१:०० खतांचा नियमित खप वाढला आहे.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------- */}
+      {/* 2. POS COUNTER BILLING WITH SPLIT PAYMENT */}
+      {/* ------------------------------------------------------------- */}
+      {activeTab === 'pos' && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Left: Product Selection for POS */}
+          <div className="lg:col-span-7 bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-4">
+            <div className="flex justify-between items-center">
+              <h3 className="font-extrabold text-slate-900 text-sm sm:text-base flex items-center gap-2">
+                <ShoppingCart className="w-4 h-4 text-agro-700" />
+                <span>काऊंटर बिलिंग (POS Billing)</span>
+              </h3>
+              <span className="text-xs font-bold text-slate-500">उपलब्ध माल: {products.length}</span>
+            </div>
+
+            {/* Product Quick Add Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-96 overflow-y-auto pr-1">
+              {products.map((p) => (
+                <div
+                  key={p.id}
+                  onClick={() => {
+                    const existing = posItems.find((i) => i.productId === p.id);
+                    if (existing) {
+                      setPosItems(
+                        posItems.map((i) =>
+                          i.productId === p.id ? { ...i, quantity: i.quantity + 1 } : i
+                        )
+                      );
+                    } else {
+                      setPosItems([
+                        ...posItems,
+                        { productId: p.id, quantity: 1, unitPrice: p.sellingPrice, gstRate: p.gstRate },
+                      ]);
+                    }
+                  }}
+                  className="p-3 rounded-xl border border-slate-200 hover:border-agro-600 bg-slate-50/50 hover:bg-emerald-50/30 cursor-pointer transition flex flex-col justify-between space-y-2"
+                >
+                  <div>
+                    <div className="flex justify-between text-[10px] font-bold">
+                      <span className="text-slate-500">{p.brandName}</span>
+                      <span className={p.totalStock > 0 ? 'text-emerald-700' : 'text-rose-700'}>
+                        साठा: {p.totalStock} {p.unit}
+                      </span>
+                    </div>
+                    <p className="font-bold text-slate-900 text-xs mt-1">{p.nameMr}</p>
+                    <p className="text-[11px] text-slate-500">{p.packSize}</p>
+                  </div>
+                  <div className="flex justify-between items-center pt-1 border-t border-slate-200/60">
+                    <span className="font-extrabold text-agro-950 text-sm">₹{p.sellingPrice}</span>
+                    <button className="bg-agro-700 hover:bg-agro-800 text-white text-[10px] font-bold px-2 py-1 rounded">
+                      + बिलात जोडा
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Right: POS Invoice & Split Payment Calculation */}
+          <div className="lg:col-span-5 bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-4">
+            <h3 className="font-extrabold text-slate-900 text-sm pb-2 border-b border-slate-100">
+              ग्राहक व बिलाचा तपशील
+            </h3>
+
+            {/* Customer Selector */}
+            <div className="space-y-2 text-xs">
+              <label className="block font-bold text-slate-700">शेतकरी ग्राहक निवडा</label>
+              <select
+                value={posCustomer}
+                onChange={(e) => {
+                  setPosCustomer(e.target.value);
+                  const cust = customers.find((c) => c.id === e.target.value);
+                  if (cust) {
+                    setPosCustomerName(cust.name);
+                    setPosCustomerPhone(cust.phone);
+                    setPosCustomerVillage(cust.village);
+                  }
+                }}
+                className="w-full border border-slate-300 rounded-lg p-2 bg-white font-semibold"
+              >
+                {customers.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name} ({c.village}) — उधारी: ₹{c.outstandingBalance}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Invoice Items List */}
+            <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+              {posItems.map((item, idx) => {
+                const prod = products.find((p) => p.id === item.productId);
+                return (
+                  <div key={idx} className="flex justify-between items-center p-2 rounded-lg bg-slate-50 text-xs">
+                    <div>
+                      <p className="font-bold text-slate-900">{prod?.nameMr || 'उत्पादन'}</p>
+                      <p className="text-[11px] text-slate-500">
+                        ₹{item.unitPrice} × {item.quantity} {prod?.unit || ''}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-slate-900">₹{item.quantity * item.unitPrice}</span>
+                      <button
+                        onClick={() => setPosItems(posItems.filter((_, i) => i !== idx))}
+                        className="text-rose-600 font-bold px-1 hover:bg-rose-50 rounded"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Split Payment Calculation 3-Box Breakdown */}
+            <div className="bg-slate-900 text-white p-4 rounded-2xl space-y-3">
+              <div className="flex justify-between text-xs text-slate-300">
+                <span>उप-एकूण (Subtotal):</span>
+                <span>₹{posSubtotal}</span>
+              </div>
+              <div className="flex justify-between text-xs text-slate-300">
+                <span>GST कर:</span>
+                <span>₹{Math.round(posTax)}</span>
+              </div>
+              <div className="flex justify-between text-xs text-slate-300 items-center">
+                <span>सवलत (Discount ₹):</span>
+                <input
+                  type="number"
+                  value={posDiscount}
+                  onChange={(e) => setPosDiscount(Number(e.target.value))}
+                  className="w-20 bg-slate-800 border border-slate-700 rounded px-2 py-0.5 text-right text-xs text-white"
+                />
+              </div>
+
+              {/* 3 Box Highlight: Grand Total, Paid Now, Khata Balance */}
+              <div className="pt-2 border-t border-slate-800 grid grid-cols-3 gap-2 text-center">
+                <div className="bg-slate-800/90 p-2 rounded-xl">
+                  <p className="text-[10px] text-slate-400">एकूण बिल</p>
+                  <p className="text-sm font-extrabold text-white">₹{posGrandTotal}</p>
+                </div>
+
+                <div className="bg-emerald-950 border border-emerald-600/50 p-2 rounded-xl">
+                  <p className="text-[10px] text-emerald-300">आता जमा (Paid)</p>
+                  <input
+                    type="number"
+                    value={posPaidAmount}
+                    onChange={(e) => setPosPaidAmount(Number(e.target.value))}
+                    className="w-full bg-transparent text-center text-sm font-extrabold text-emerald-300 focus:outline-none"
+                  />
+                </div>
+
+                <div className="bg-amber-950 border border-amber-600/50 p-2 rounded-xl">
+                  <p className="text-[10px] text-amber-300">उधारी (Khata)</p>
+                  <p className="text-sm font-extrabold text-amber-300">₹{posBalanceToKhata}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Payment Mode & Submit Button */}
+            <div className="grid grid-cols-3 gap-2 text-xs font-bold">
+              {(['CASH', 'UPI', 'CREDIT'] as const).map((m) => (
+                <button
+                  key={m}
+                  onClick={() => setPosPaymentMethod(m)}
+                  className={`py-2 rounded-lg border text-center ${
+                    posPaymentMethod === m
+                      ? 'bg-agro-800 text-white border-agro-800'
+                      : 'bg-white text-slate-700 border-slate-200'
+                  }`}
+                >
+                  {m === 'CASH' ? 'रोख (Cash)' : m === 'UPI' ? 'UPI / GPay' : 'उधारी (Credit)'}
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={handleCreateSale}
+              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3 rounded-xl transition shadow-md flex items-center justify-center gap-2 text-sm"
+            >
+              <Printer className="w-4 h-4" />
+              <span>बिल प्रिंट करा व साठा अपडेट करा</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------- */}
+      {/* 3. INVENTORY & STOCK MANAGEMENT TAB */}
+      {/* ------------------------------------------------------------- */}
+      {activeTab === 'inventory' && (
+        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <div>
+              <h3 className="font-extrabold text-slate-900 text-base">
+                कृषी माल साठा व इन्व्हेंटरी (Stock Management)
+              </h3>
+              <p className="text-xs text-slate-500">
+                प्रत्येक औषध व खताचा शिल्लक साठा, बॅच क्रमांक व चालू विक्री दर.
+              </p>
+            </div>
+
+            <button
+              onClick={() => {
+                setEditingProductId(null);
+                setPNameMr('');
+                setPNameEn('');
+                setPSellingPrice(200);
+                setPPurchasePrice(160);
+                setPInitialStock(50);
+                setPTechnicalName('');
+                setProductModalOpen(true);
+              }}
+              className="bg-agro-700 hover:bg-agro-800 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition flex items-center gap-1"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>नवीन औषध/खत जोडा</span>
+            </button>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
+                <tr>
+                  <th className="p-3">उत्पादन नाव (मराठी)</th>
+                  <th className="p-3">कंपनी</th>
+                  <th className="p-3">पॅकिंग</th>
+                  <th className="p-3">चालू विक्री दर</th>
+                  <th className="p-3">शिल्लक साठा (Stock)</th>
+                  <th className="p-3">बॅच व एक्सपायरी</th>
+                  <th className="p-3 text-right">कृती</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {products.map((p) => (
+                  <tr key={p.id} className="hover:bg-slate-50/80">
+                    <td className="p-3">
+                      <p className="font-extrabold text-slate-900">{p.nameMr}</p>
+                      <p className="text-[11px] text-slate-500">{p.nameEn}</p>
+                      {p.technicalName && (
+                        <span className="text-[10px] text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded mt-0.5 inline-block">
+                          घटक: {p.technicalName}
+                        </span>
+                      )}
+                    </td>
+                    <td className="p-3 font-semibold text-slate-700">{p.brandName}</td>
+                    <td className="p-3">{p.packSize}</td>
+                    <td className="p-3 font-extrabold text-agro-950 text-sm">₹{p.sellingPrice}</td>
+                    <td className="p-3">
+                      <span
+                        className={`font-extrabold px-2 py-1 rounded text-xs ${
+                          p.totalStock <= p.minStockLevel
+                            ? 'bg-rose-100 text-rose-900'
+                            : 'bg-emerald-100 text-emerald-900'
+                        }`}
+                      >
+                        {p.totalStock} {p.unit}
+                      </span>
+                    </td>
+                    <td className="p-3 text-[11px]">
+                      <p className="font-bold text-slate-800">{p.batches?.[0]?.batchNumber || 'BAT-2026'}</p>
+                      <p className="text-slate-500">Exp: {p.batches?.[0]?.expiryDate || '2027-12-31'}</p>
+                    </td>
+                    <td className="p-3 text-right">
+                      <button
+                        onClick={() => {
+                          setEditingProductId(p.id);
+                          setPNameMr(p.nameMr);
+                          setPNameEn(p.nameEn);
+                          setPCategoryId(p.categoryId);
+                          setPBrandName(p.brandName);
+                          setPPackSize(p.packSize);
+                          setPUnit(p.unit);
+                          setPSellingPrice(p.sellingPrice);
+                          setPPurchasePrice(p.purchasePrice);
+                          setPGstRate(p.gstRate);
+                          setPInitialStock(p.totalStock);
+                          setPMinStock(p.minStockLevel);
+                          setPTechnicalName(p.technicalName || '');
+                          setPTargetCrops(p.targetCrops || '');
+                          setPDosageGuide(p.dosageGuide || '');
+                          setProductModalOpen(true);
+                        }}
+                        className="text-agro-700 hover:text-agro-900 font-bold bg-slate-100 hover:bg-slate-200 px-2.5 py-1.5 rounded-lg transition"
+                      >
+                        एडिट / साठा बदला
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------- */}
+      {/* 4. CUSTOMER KHATA CRM TAB */}
+      {/* ------------------------------------------------------------- */}
+      {activeTab === 'customers' && (
+        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-4">
+          <div className="flex justify-between items-center">
+            <div>
+              <h3 className="font-extrabold text-slate-900 text-base">
+                शेतकरी खातेवही व उधारी CRM (Farmer Khata Ledger)
+              </h3>
+              <p className="text-xs text-slate-500">
+                प्रत्येक शेतकऱ्याची थकबाकी, फोन नंबर, गाव व WhatsApp पेमेंट रिमायंडर.
+              </p>
+            </div>
+            <div className="bg-amber-100 text-amber-900 font-extrabold text-xs px-3 py-1.5 rounded-xl">
+              एकूण येणे उधारी: ₹{kpis?.totalReceivables?.toLocaleString('en-IN') || '०'}
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
+                <tr>
+                  <th className="p-3">शेतकरी नाव</th>
+                  <th className="p-3">गाव</th>
+                  <th className="p-3">मोबाईल</th>
+                  <th className="p-3">पिके</th>
+                  <th className="p-3">उधारी शिल्लक (Balance)</th>
+                  <th className="p-3 text-right">कृती</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {customers.map((c) => (
+                  <tr key={c.id} className="hover:bg-slate-50/80">
+                    <td className="p-3 font-extrabold text-slate-900">{c.name}</td>
+                    <td className="p-3 font-semibold text-slate-700">{c.village}</td>
+                    <td className="p-3 font-mono">{c.phone}</td>
+                    <td className="p-3 text-slate-600">{c.cropTypes?.join(', ') || 'कांदा, भाजीपाला'}</td>
+                    <td className="p-3">
+                      <span
+                        className={`font-extrabold px-2.5 py-1 rounded text-xs ${
+                          c.outstandingBalance > 0
+                            ? 'bg-amber-100 text-amber-950 border border-amber-300'
+                            : 'bg-emerald-100 text-emerald-950'
+                        }`}
+                      >
+                        ₹{c.outstandingBalance}
+                      </span>
+                    </td>
+                    <td className="p-3 text-right space-x-2">
+                      <button
+                        onClick={() => {
+                          setSelectedKhataCustomer(c);
+                          setCollectAmount(c.outstandingBalance);
+                          setPaymentModalOpen(true);
+                        }}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2.5 py-1.5 rounded-lg transition"
+                      >
+                        पेमेंट जमा करा
+                      </button>
+
+                      {c.outstandingBalance > 0 && (
                         <a
                           href={`https://wa.me/91${c.phone}?text=${encodeURIComponent(
-                            `नमस्कार ${c.name}, श्री कृष्ण ॲग्रो सर्व्हिसेस, सिन्नर कडे आपली ₹${c.outstandingBalance} उधारी शिल्लक आहे. कृपया वेळेवर भरणा करावा. धन्यवाद!`
+                            `नमस्कार ${c.name}, श्री कृष्ण ॲग्रो सर्व्हिसेस सिन्नर कडून नम्र स्मरण: आपल्या खात्यावर ₹${c.outstandingBalance} उधारी शिल्लक आहे. कृपया सोयीनुसार जमा करावी.`
                           )}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="bg-emerald-600 hover:bg-emerald-700 text-white p-1.5 rounded-lg flex items-center justify-center"
-                          title="WhatsApp आठवण पाठवा"
+                          className="bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold px-2.5 py-1.5 rounded-lg transition inline-flex items-center gap-1"
                         >
-                          <MessageCircle className="w-4 h-4" />
+                          <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>WhatsApp आठवण</span>
                         </a>
-                      </>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* ------------------------------------------------------------- */}
-        {/* TAB 5: QUOTATION ENGINE */}
-        {/* ------------------------------------------------------------- */}
-        {activeTab === 'quotations' && (
-          <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-6">
-            <div className="flex justify-between items-center pb-3 border-b border-slate-100">
-              <div>
-                <h3 className="font-extrabold text-lg text-slate-900 flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-agro-700" />
-                  <span>अधिकृत कोटेशन्स (Quotation Engine)</span>
-                </h3>
-                <p className="text-xs text-slate-500">
-                  युनिक सिरियल क्रमांक (QTN-YYYY-XXXX) व ब्रँडेड A4 PDF निर्मिती.
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              {quotations.map((q) => (
-                <div key={q.id} className="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-sm text-agro-900">{q.quotationNumber}</span>
-                      <span className="bg-slate-200 text-slate-700 text-[10px] px-2 py-0.5 rounded font-bold">
-                        {q.status}
-                      </span>
-                    </div>
-                    <p className="text-slate-600 mt-1">
-                      ग्राहक: <strong>{q.customerName}</strong> ({q.customerPhone}) • {q.customerVillage || 'सिन्नर'}
-                    </p>
-                    <p className="text-slate-400 text-[11px]">
-                      तयार केले: {q.createdByName} • मुदत: {new Date(q.validUntil).toLocaleDateString('en-IN')}
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <span className="text-base font-extrabold text-slate-900">
-                      ₹{q.grandTotal.toLocaleString('en-IN')}
-                    </span>
-                    <a
-                      href={`/api/quotations/${q.id}?format=html`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="bg-agro-700 hover:bg-agro-800 text-white font-bold px-3 py-1.5 rounded-lg flex items-center gap-1"
-                    >
-                      <Printer className="w-3.5 h-3.5" />
-                      <span>पावती PDF</span>
-                    </a>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* ------------------------------------------------------------- */}
-        {/* TAB 6: EXPENSES & NET PROFIT ENGINE */}
-        {/* ------------------------------------------------------------- */}
-        {activeTab === 'expenses' && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            <div className="lg:col-span-5 bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
-              <h3 className="font-extrabold text-base text-slate-900 flex items-center gap-2 pb-2 border-b border-slate-100">
-                <DollarSign className="w-5 h-5 text-red-600" />
-                <span>दुकान खर्च नोंदवा (Record Expense)</span>
-              </h3>
-
-              <form onSubmit={handleRecordExpense} className="space-y-3 text-xs">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">खर्च प्रकार (Category)</label>
-                  <select
-                    value={expCategory}
-                    onChange={(e) => setExpCategory(e.target.value)}
-                    className="w-full border border-slate-300 rounded-lg p-2 bg-white"
-                  >
-                    <option value="RENT">दुकान भाडे (Rent)</option>
-                    <option value="ELECTRICITY">वीज बिल (Electricity)</option>
-                    <option value="SALARY">कर्मचारी पगार (Salary)</option>
-                    <option value="TRANSPORT">ट्रान्सपोर्ट / हमाली (Transport)</option>
-                    <option value="MARKETING">मार्केटिंग व जाहिरात</option>
-                    <option value="MAINTENANCE">दुकान मेंटेनन्स</option>
-                    <option value="OFFICE">स्टेशनरी व चहापान</option>
-                    <option value="OTHER">इतर किरकोळ खर्च</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">रक्कम ₹</label>
-                  <input
-                    type="number"
-                    required
-                    value={expAmount || ''}
-                    onChange={(e) => setExpAmount(Number(e.target.value))}
-                    placeholder="उदा. 2500"
-                    className="w-full border border-slate-300 rounded-lg p-2 font-bold"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">देणारा / विक्रेता (Vendor)</label>
-                  <input
-                    type="text"
-                    value={expVendor}
-                    onChange={(e) => setExpVendor(e.target.value)}
-                    placeholder="उदा. MSEDCL / ट्रान्सपोर्ट ऑपरेटर"
-                    className="w-full border border-slate-300 rounded-lg p-2"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">पेमेंट माध्यम</label>
-                  <select
-                    value={expMethod}
-                    onChange={(e) => setExpMethod(e.target.value as any)}
-                    className="w-full border border-slate-300 rounded-lg p-2 bg-white"
-                  >
-                    <option value="CASH">रोख (Cash)</option>
-                    <option value="UPI">UPI</option>
-                    <option value="BANK_TRANSFER">बँक ट्रान्सफर</option>
-                  </select>
-                </div>
-
-                <button
-                  type="submit"
-                  className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 rounded-xl transition"
-                >
-                  खर्च नोंदवा
-                </button>
-              </form>
-            </div>
-
-            <div className="lg:col-span-7 bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
-              <h3 className="font-extrabold text-base text-slate-900 pb-2 border-b border-slate-100">
-                खर्चाचा इतिहास (Expense Logs)
-              </h3>
-              <div className="space-y-2 max-h-96 overflow-y-auto">
-                {expenses.map((e) => (
-                  <div key={e.id} className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs flex justify-between items-center">
-                    <div>
-                      <p className="font-bold text-slate-800">{e.category} — {e.vendor}</p>
-                      <p className="text-slate-400 text-[11px]">{new Date(e.expenseDate).toLocaleDateString('en-IN')} • नोंद: {e.recordedByName}</p>
-                    </div>
-                    <span className="font-extrabold text-red-600 text-sm">
-                      - ₹{e.amount.toLocaleString('en-IN')}
-                    </span>
-                  </div>
+                      )}
+                    </td>
+                  </tr>
                 ))}
-              </div>
-            </div>
+              </tbody>
+            </table>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* ------------------------------------------------------------- */}
-        {/* TAB 7: WHATSAPP AI ASSISTANT SIMULATOR */}
-        {/* ------------------------------------------------------------- */}
-        {activeTab === 'whatsapp' && (
-          <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-6">
-            <div className="border-b border-slate-100 pb-3">
-              <h3 className="font-extrabold text-lg text-slate-900 flex items-center gap-2">
-                <MessageCircle className="w-5 h-5 text-emerald-600" />
-                <span>WhatsApp AI असिस्टंट - लाइव्ह सिम्युलेटर (Live Sandbox)</span>
-              </h3>
-              <p className="text-xs text-slate-500">
-                शेतकऱ्यांनी विचारलेल्या प्रश्नांना AI कडून नियंत्रित डेटाबेस टूल्सद्वारे मिळणारी अचूक उत्तरे तपासा.
-              </p>
-            </div>
+      {/* ------------------------------------------------------------- */}
+      {/* 5. PURCHASES & INWARD STOCK TAB */}
+      {/* ------------------------------------------------------------- */}
+      {activeTab === 'purchases' && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="lg:col-span-5 bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-4">
+            <h3 className="font-extrabold text-slate-900 text-sm sm:text-base flex items-center gap-2">
+              <Truck className="w-4 h-4 text-agro-700" />
+              <span>नवीन माल खरेदी नोंद (Inward Stock)</span>
+            </h3>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              {/* Simulator Input */}
-              <div className="lg:col-span-5 bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-4 text-xs">
-                <h4 className="font-bold text-slate-900">मेसेज पाठवा (Inbound Simulation)</h4>
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">शेतकरी नाव</label>
-                  <input
-                    type="text"
-                    value={simName}
-                    onChange={(e) => setSimName(e.target.value)}
-                    className="w-full border border-slate-300 rounded-lg p-2 bg-white"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">शेतकरी मोबाईल</label>
-                  <input
-                    type="tel"
-                    value={simPhone}
-                    onChange={(e) => setSimPhone(e.target.value)}
-                    className="w-full border border-slate-300 rounded-lg p-2 bg-white font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">व्हॉट्सॲप मेसेज</label>
-                  <textarea
-                    rows={3}
-                    value={simMessage}
-                    onChange={(e) => setSimMessage(e.target.value)}
-                    placeholder="उदा. १९:१९:१९ चे दर काय आहेत?"
-                    className="w-full border border-slate-300 rounded-lg p-2 bg-white"
-                  />
-                </div>
-
-                <div className="flex flex-wrap gap-1.5 pt-1">
-                  <span className="text-[10px] text-slate-500 block w-full">नमुना प्रश्न:</span>
-                  <button
-                    type="button"
-                    onClick={() => setSimMessage('१९:१९:१९ आणि नॅटिव्हो चे दर काय आहेत?')}
-                    className="bg-white border border-slate-200 px-2 py-1 rounded text-[10px] hover:bg-slate-100"
-                  >
-                    दर विचारणे
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSimMessage('दुकान कुठे आहे आणि वेळ काय आहे?')}
-                    className="bg-white border border-slate-200 px-2 py-1 rounded text-[10px] hover:bg-slate-100"
-                  >
-                    पत्ता व वेळ
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSimMessage('कांदा करप्यासाठी औषध सांगा')}
-                    className="bg-white border border-slate-200 px-2 py-1 rounded text-[10px] hover:bg-slate-100"
-                  >
-                    तज्ञ सल्ला
-                  </button>
-                </div>
-
-                <button
-                  type="button"
-                  disabled={simLoading}
-                  onClick={handleSimulateWhatsApp}
-                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl transition flex items-center justify-center gap-1.5"
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">सप्लायर / कंपनी</label>
+                <select
+                  value={purSupplier}
+                  onChange={(e) => setPurSupplier(e.target.value)}
+                  className="w-full border border-slate-300 rounded-lg p-2 bg-white font-semibold"
                 >
-                  <Send className="w-4 h-4" />
-                  <span>{simLoading ? 'प्रक्रिया चालू आहे...' : 'मेसेज पाठवा (Run Simulator)'}</span>
-                </button>
-              </div>
-
-              {/* Chat Stream Screen */}
-              <div className="lg:col-span-7 bg-slate-900 text-white p-5 rounded-2xl border border-slate-800 space-y-3">
-                <div className="flex justify-between items-center pb-2 border-b border-slate-800 text-xs">
-                  <span className="text-emerald-400 font-bold">WhatsApp Live Conversation Stream</span>
-                  <span className="text-slate-400 text-[10px]">{simHistory.length} मेसेज</span>
-                </div>
-
-                <div className="h-80 overflow-y-auto space-y-3 pr-1 text-xs">
-                  {simHistory.map((m, idx) => (
-                    <div
-                      key={idx}
-                      className={`flex ${m.direction === 'INBOUND' ? 'justify-start' : 'justify-end'}`}
-                    >
-                      <div
-                        className={`max-w-[85%] rounded-2xl p-3 whitespace-pre-line leading-relaxed ${
-                          m.direction === 'INBOUND'
-                            ? 'bg-slate-800 text-slate-100 rounded-bl-none border border-slate-700'
-                            : 'bg-emerald-800 text-white rounded-br-none'
-                        }`}
-                      >
-                        <p className="text-[10px] font-bold text-emerald-300 mb-1">
-                          {m.direction === 'INBOUND' ? `👤 ${m.senderName} (${m.phone})` : '🤖 Shri Krishna Agro AI'}
-                        </p>
-                        <p>{m.text}</p>
-                        {m.toolUsed && (
-                          <span className="block text-[9px] mt-1.5 text-emerald-200 bg-emerald-950/60 px-2 py-0.5 rounded">
-                            🔧 Tool Executed: {m.toolUsed}
-                          </span>
-                        )}
-                      </div>
-                    </div>
+                  {suppliers.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} ({s.city})
+                    </option>
                   ))}
-                </div>
+                </select>
               </div>
-            </div>
-          </div>
-        )}
 
-        {/* ------------------------------------------------------------- */}
-        {/* TAB 8: OWNER AI BUSINESS ASSISTANT */}
-        {/* ------------------------------------------------------------- */}
-        {activeTab === 'owner_ai' && (
-          <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-6">
-            <div className="border-b border-slate-100 pb-3">
-              <h3 className="font-extrabold text-lg text-slate-900 flex items-center gap-2">
-                <Bot className="w-5 h-5 text-agro-700" />
-                <span>Owner AI खाजगी बिझनेस असिस्टंट (मराठी + English)</span>
-              </h3>
-              <p className="text-xs text-slate-500">
-                दुकान मालकांसाठी थेट व्यवसायाच्या विक्री, नफा, कमी स्टॉक व शेतकरी उधारीवर आधारित व्हॉइस/टेक्स्ट विश्लेषण.
-              </p>
-            </div>
-
-            <form onSubmit={handleOwnerAI} className="space-y-3">
-              <div className="relative">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">सप्लायर बिल नंबर</label>
                 <input
                   type="text"
-                  value={aiQuery}
-                  onChange={(e) => setAiQuery(e.target.value)}
-                  placeholder="उदा. आजची विक्री किती? / कोणता माल कमी आहे? / या महिन्याचा नफा दाखव..."
-                  className="w-full pl-4 pr-24 py-3.5 border border-slate-300 rounded-2xl text-xs sm:text-sm focus:ring-2 focus:ring-agro-600 focus:outline-none shadow-sm"
+                  value={purInvoice}
+                  onChange={(e) => setPurInvoice(e.target.value)}
+                  placeholder="उदा. INV-DEEPAK-9921"
+                  className="w-full border border-slate-300 rounded-lg p-2"
                 />
-                <button
-                  type="submit"
-                  disabled={aiLoading || !aiQuery.trim()}
-                  className="absolute right-2 top-2 bottom-2 bg-agro-700 hover:bg-agro-800 text-white font-bold px-4 rounded-xl text-xs transition flex items-center gap-1"
-                >
-                  <Sparkles className="w-4 h-4" />
-                  <span>{aiLoading ? 'शोधत आहे...' : 'विचारा'}</span>
-                </button>
               </div>
 
-              {/* Sample Quick Query Buttons */}
-              <div className="flex flex-wrap gap-2 text-xs font-semibold text-slate-600">
-                <span>नमुना प्रश्न:</span>
-                <button
-                  type="button"
-                  onClick={() => setAiQuery('आजची विक्री किती झाली?')}
-                  className="bg-slate-100 hover:bg-slate-200 px-3 py-1 rounded-lg text-slate-800"
-                >
-                  आजची विक्री किती?
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAiQuery('कोणता माल संपत आला आहे?')}
-                  className="bg-slate-100 hover:bg-slate-200 px-3 py-1 rounded-lg text-slate-800"
-                >
-                  कमी स्टॉक रिपोर्ट
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAiQuery('निव्वळ नफा आणि मार्जिन किती आहे?')}
-                  className="bg-slate-100 hover:bg-slate-200 px-3 py-1 rounded-lg text-slate-800"
-                >
-                  नफा व तोटा
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAiQuery('शेतकऱ्यांची उधारी किती बाकी आहे?')}
-                  className="bg-slate-100 hover:bg-slate-200 px-3 py-1 rounded-lg text-slate-800"
-                >
-                  शेतकरी उधारी
-                </button>
-              </div>
-            </form>
-
-            {/* AI Response Card */}
-            {aiResponse && (
-              <div className="bg-emerald-950 text-white p-6 rounded-2xl border border-emerald-800 shadow-lg space-y-4 animate-in fade-in duration-200">
-                <div className="flex justify-between items-center border-b border-emerald-800 pb-2">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="w-5 h-5 text-amber-400" />
-                    <span className="font-bold text-sm text-emerald-200">AI बिझनेस उत्तर (Verified DB Tool)</span>
-                  </div>
-                  <span className="text-[10px] bg-emerald-900 text-emerald-300 px-2 py-0.5 rounded font-mono">
-                    Tool: {aiResponse.toolUsed}
-                  </span>
-                </div>
-
-                <div className="text-xs sm:text-sm whitespace-pre-line leading-relaxed text-emerald-50">
-                  {aiResponse.answerMr}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ------------------------------------------------------------- */}
-        {/* TAB 9: STAFF & ROLE MANAGEMENT */}
-        {/* ------------------------------------------------------------- */}
-        {activeTab === 'staff' && (
-          <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-6">
-            <div className="flex justify-between items-center pb-3 border-b border-slate-100">
               <div>
-                <h3 className="font-extrabold text-lg text-slate-900 flex items-center gap-2">
-                  <UserCheck className="w-5 h-5 text-agro-700" />
-                  <span>कर्मचारी खाते व भूमिका वाटप (Staff & RBAC)</span>
-                </h3>
-                <p className="text-xs text-slate-500">
-                  मालक (Owner) द्वारे नियंत्रित कर्मचारी खाती व अधिकार वाटप.
-                </p>
+                <label className="block font-bold text-slate-700 mb-1">वाहतूक खर्च (Freight ₹)</label>
+                <input
+                  type="number"
+                  value={purFreight}
+                  onChange={(e) => setPurFreight(Number(e.target.value))}
+                  className="w-full border border-slate-300 rounded-lg p-2"
+                />
               </div>
-            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {staff.map((s) => (
-                <div key={s.id} className="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-xs space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="font-bold text-sm text-slate-900">{s.name}</span>
-                    <span className="bg-agro-800 text-white font-bold text-[10px] px-2 py-0.5 rounded">
-                      {s.role}
-                    </span>
-                  </div>
-                  <p className="text-slate-600">📞 {s.phone} • {s.email || 'N/A'}</p>
-                  <p className="text-slate-500 text-[11px]">पात्रता: {s.qualification || 'कृषी सल्लागार'}</p>
-                </div>
-              ))}
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">सप्लायरला भरलेली रक्कम (₹)</label>
+                <input
+                  type="number"
+                  value={purPaidAmount}
+                  onChange={(e) => setPurPaidAmount(Number(e.target.value))}
+                  className="w-full border border-slate-300 rounded-lg p-2"
+                />
+              </div>
+
+              <button
+                onClick={handleRecordPurchase}
+                className="w-full bg-agro-800 hover:bg-agro-900 text-white font-extrabold py-3 rounded-xl transition shadow flex items-center justify-center gap-2 mt-2"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>खरेदी माल साठ्यात जोडा (Stock Inward)</span>
+              </button>
             </div>
           </div>
-        )}
 
-        {/* ------------------------------------------------------------- */}
-        {/* TAB 10: SECURITY AUDIT TRAIL */}
-        {/* ------------------------------------------------------------- */}
-        {activeTab === 'audit' && (
-          <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-6">
-            <div className="flex justify-between items-center pb-3 border-b border-slate-100">
-              <div>
-                <h3 className="font-extrabold text-lg text-slate-900 flex items-center gap-2">
-                  <History className="w-5 h-5 text-agro-700" />
-                  <span>अपरिवर्तनीय सुरक्षा ऑडिट ट्रेल (Security Audit Logs)</span>
-                </h3>
-                <p className="text-xs text-slate-500">
-                  प्रत्येक लॉगिन, विक्री, स्टॉक बदल व सेटिंग्ज बदलांची स्वयंचलित नोंद.
-                </p>
-              </div>
-            </div>
-
+          <div className="lg:col-span-7 bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-4">
+            <h3 className="font-extrabold text-slate-900 text-sm">खरेदी इतिहास (Past Inward Bills)</h3>
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
-                    <th className="p-3">वेळ (Timestamp)</th>
-                    <th className="p-3">वापरकर्ता (User)</th>
-                    <th className="p-3">क्रिया (Action)</th>
-                    <th className="p-3">घटक (Entity)</th>
-                    <th className="p-3">तपशील (Data)</th>
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
+                  <tr>
+                    <th className="p-2.5">बिल #</th>
+                    <th className="p-2.5">सप्लायर</th>
+                    <th className="p-2.5">एकूण खरेदी</th>
+                    <th className="p-2.5">भरणा</th>
+                    <th className="p-2.5">तारीख</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 font-medium">
-                  {auditLogs.map((log) => (
-                    <tr key={log.id} className="hover:bg-slate-50">
-                      <td className="p-3 font-mono text-slate-500">
-                        {new Date(log.createdAt).toLocaleTimeString('en-IN')}
-                      </td>
-                      <td className="p-3">
-                        <strong>{log.userName}</strong> ({log.userRole})
-                      </td>
-                      <td className="p-3 font-bold text-agro-800">{log.action}</td>
-                      <td className="p-3 font-mono text-slate-600">{log.entity}</td>
-                      <td className="p-3 font-mono text-[11px] text-slate-600 max-w-xs truncate">
-                        {log.newData || '-'}
-                      </td>
+                <tbody className="divide-y divide-slate-100">
+                  {purchases.map((p) => (
+                    <tr key={p.id} className="hover:bg-slate-50/80">
+                      <td className="p-2.5 font-bold text-slate-900">{p.supplierInvoiceNumber}</td>
+                      <td className="p-2.5 font-semibold">{p.supplierName}</td>
+                      <td className="p-2.5 font-extrabold">₹{p.grandTotal}</td>
+                      <td className="p-2.5 text-emerald-800 font-bold">₹{p.paidAmount}</td>
+                      <td className="p-2.5 text-slate-500">{new Date(p.createdAt).toLocaleDateString('mr-IN')}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* ------------------------------------------------------------- */}
-        {/* TAB 11: ONBOARDING SETUP WIZARD & SETTINGS */}
-        {/* ------------------------------------------------------------- */}
-        {activeTab === 'settings' && profile && (
-          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-8">
-            <div className="flex justify-between items-center pb-4 border-b border-slate-100">
+      {/* ------------------------------------------------------------- */}
+      {/* 6. EXPENSES TAB */}
+      {/* ------------------------------------------------------------- */}
+      {activeTab === 'expenses' && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="lg:col-span-5 bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-4">
+            <h3 className="font-extrabold text-slate-900 text-sm sm:text-base flex items-center gap-2">
+              <DollarSign className="w-4 h-4 text-agro-700" />
+              <span>दुकान खर्च नोंदवा (Record Expense)</span>
+            </h3>
+
+            <div className="space-y-3 text-xs">
               <div>
-                <h3 className="font-extrabold text-xl text-slate-900 flex items-center gap-2">
-                  <Settings className="w-6 h-6 text-agro-700" />
-                  <span>दुकान ऑनबोर्डिंग व व्यवसाय सेटिंग्ज (Business Setup Wizard)</span>
-                </h3>
-                <p className="text-xs text-slate-500">
-                  परवाने, बँक तपशील, GST माहिती आणि स्वच्छ उत्पादन डेटाबेस व्यवस्थापन.
-                </p>
+                <label className="block font-bold text-slate-700 mb-1">खर्च प्रकार (Category)</label>
+                <select
+                  value={expCategory}
+                  onChange={(e) => setExpCategory(e.target.value)}
+                  className="w-full border border-slate-300 rounded-lg p-2 bg-white font-semibold"
+                >
+                  <option value="RENT">दुकान भाडे (Shop Rent)</option>
+                  <option value="SALARY">कर्मचारी पगार (Staff Salary)</option>
+                  <option value="ELECTRICITY">वीज बिल (Electricity)</option>
+                  <option value="TRANSPORT">वाहतूक व हमाली (Transport & Hamali)</option>
+                  <option value="MARKETING">जाहिरात व प्रचार (Marketing)</option>
+                  <option value="TEA_SNACKS">चहा-पाणी व इतर (Tea & Snacks)</option>
+                </select>
               </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">रक्कम (₹ Amount)</label>
+                <input
+                  type="number"
+                  value={expAmount}
+                  onChange={(e) => setExpAmount(Number(e.target.value))}
+                  className="w-full border border-slate-300 rounded-lg p-2"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">कोणाला दिले (Vendor / Recipient)</label>
+                <input
+                  type="text"
+                  value={expVendor}
+                  onChange={(e) => setExpVendor(e.target.value)}
+                  className="w-full border border-slate-300 rounded-lg p-2"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">टीप / तपशील (Notes)</label>
+                <input
+                  type="text"
+                  value={expNotes}
+                  onChange={(e) => setExpNotes(e.target.value)}
+                  className="w-full border border-slate-300 rounded-lg p-2"
+                />
+              </div>
+
+              <button
+                onClick={handleRecordExpense}
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3 rounded-xl transition shadow flex items-center justify-center gap-2 mt-2"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>खर्च नोंद सेव्ह करा</span>
+              </button>
             </div>
+          </div>
 
-            {/* Business Information Checklist */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
-              <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-3">
-                <h4 className="font-bold text-sm text-slate-900">व्यवसाय व परवाना माहिती</h4>
-                <div>
-                  <label className="block text-slate-600 mb-1">दुकान नाव</label>
-                  <input
-                    type="text"
-                    value={profile.displayName}
-                    onChange={(e) => setProfile({ ...profile, displayName: e.target.value })}
-                    className="w-full border border-slate-300 rounded p-2 bg-white font-bold"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-600 mb-1">GSTIN</label>
-                  <input
-                    type="text"
-                    value={profile.gstin}
-                    onChange={(e) => setProfile({ ...profile, gstin: e.target.value })}
-                    className="w-full border border-slate-300 rounded p-2 bg-white font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-600 mb-1">खत परवाना क्र. (Fertilizer License)</label>
-                  <input
-                    type="text"
-                    value={profile.fertilizerLicense}
-                    onChange={(e) => setProfile({ ...profile, fertilizerLicense: e.target.value })}
-                    className="w-full border border-slate-300 rounded p-2 bg-white font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-600 mb-1">बियाणे परवाना क्र. (Seed License)</label>
-                  <input
-                    type="text"
-                    value={profile.seedLicense}
-                    onChange={(e) => setProfile({ ...profile, seedLicense: e.target.value })}
-                    className="w-full border border-slate-300 rounded p-2 bg-white font-mono"
-                  />
-                </div>
-              </div>
-
-              <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-3">
-                <h4 className="font-bold text-sm text-slate-900">बँक व UPI पेमेंट तपशील</h4>
-                <div>
-                  <label className="block text-slate-600 mb-1">UPI VPA ID</label>
-                  <input
-                    type="text"
-                    value={profile.upiId}
-                    onChange={(e) => setProfile({ ...profile, upiId: e.target.value })}
-                    className="w-full border border-slate-300 rounded p-2 bg-white font-bold text-agro-800"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-600 mb-1">बँक नाव व शाखा</label>
-                  <input
-                    type="text"
-                    value={`${profile.bankName} (${profile.bankBranch})`}
-                    onChange={(e) => setProfile({ ...profile, bankName: e.target.value })}
-                    className="w-full border border-slate-300 rounded p-2 bg-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-600 mb-1">खाते क्रमांक व IFSC</label>
-                  <input
-                    type="text"
-                    value={`${profile.bankAccountNo} • IFSC: ${profile.bankIfsc}`}
-                    onChange={(e) => setProfile({ ...profile, bankAccountNo: e.target.value })}
-                    className="w-full border border-slate-300 rounded p-2 bg-white font-mono"
-                  />
-                </div>
-              </div>
+          <div className="lg:col-span-7 bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-4">
+            <h3 className="font-extrabold text-slate-900 text-sm">झालेले खर्च (Expense Records)</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
+                  <tr>
+                    <th className="p-2.5">प्रकार</th>
+                    <th className="p-2.5">रक्कम</th>
+                    <th className="p-2.5">तपशील</th>
+                    <th className="p-2.5">पेमेंट मार्ग</th>
+                    <th className="p-2.5">तारीख</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {expenses.map((e) => (
+                    <tr key={e.id} className="hover:bg-slate-50/80">
+                      <td className="p-2.5 font-bold text-slate-900">{e.category}</td>
+                      <td className="p-2.5 font-extrabold text-rose-700">₹{e.amount}</td>
+                      <td className="p-2.5 text-slate-600">{e.vendor}</td>
+                      <td className="p-2.5 text-slate-500">{e.paymentMethod}</td>
+                      <td className="p-2.5 text-slate-400">{new Date(e.createdAt).toLocaleDateString('mr-IN')}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
+          </div>
+        </div>
+      )}
 
-            {/* Data Clean / Demo Reset Control */}
-            <div className="bg-amber-50 border border-amber-200 p-5 rounded-2xl space-y-3 text-xs">
-              <h4 className="font-bold text-sm text-amber-950 flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-amber-700" />
-                <span>डेटाबेस पर्यावरण व्यवस्थापन (Demo vs. Production Database)</span>
-              </h4>
-              <p className="text-amber-900 leading-relaxed">
-                डेव्हलपमेंट व QA चाचण्या पूर्ण झाल्यावर खऱ्या दुकान सुरूवातीसाठी खालील &quot;स्वच्छ उत्पादन डेटाबेस सुरू करा&quot; बटण दाबा.
+      {/* ------------------------------------------------------------- */}
+      {/* 7. FINANCIALS & BALANCE SHEET TAB */}
+      {/* ------------------------------------------------------------- */}
+      {activeTab === 'financials' && (
+        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-6">
+          <div>
+            <h3 className="font-extrabold text-slate-900 text-lg">
+              नफा-तोटा व व्यवसाय आर्थिक पत्रक (Financial Statements)
+            </h3>
+            <p className="text-xs text-slate-500">
+              श्री कृष्ण ॲग्रो सर्व्हिसेस, सिन्नर — अचूक संगणकीय नफा व ताळेबंद.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div className="bg-emerald-50 border border-emerald-200 p-5 rounded-2xl space-y-2">
+              <span className="text-xs font-bold text-emerald-800 uppercase">१. एकूण विक्री उत्पन्न</span>
+              <p className="text-2xl font-extrabold text-emerald-950">
+                ₹{kpis?.totalRevenue?.toLocaleString('en-IN') || '०'}
               </p>
-              <div className="flex flex-wrap gap-3 pt-1">
+              <p className="text-xs text-emerald-700">काऊंटर व थेट विक्रीतून जमा झालेली रक्कम</p>
+            </div>
+
+            <div className="bg-slate-50 border border-slate-200 p-5 rounded-2xl space-y-2">
+              <span className="text-xs font-bold text-slate-600 uppercase">२. विकलेल्या मालाचा खरेदी खर्च (COGS)</span>
+              <p className="text-2xl font-extrabold text-slate-900">
+                ₹{kpis?.totalCogs?.toLocaleString('en-IN') || '०'}
+              </p>
+              <p className="text-xs text-slate-500">कंपनी व सप्लायर खरेदी मूल्य</p>
+            </div>
+
+            <div className="bg-amber-50 border border-amber-200 p-5 rounded-2xl space-y-2">
+              <span className="text-xs font-bold text-amber-800 uppercase">३. दुकान खर्च (Expenses)</span>
+              <p className="text-2xl font-extrabold text-amber-950">
+                ₹{kpis?.totalExpenses?.toLocaleString('en-IN') || '०'}
+              </p>
+              <p className="text-xs text-amber-700">भाडे, पगार, वीज व इतर खर्च</p>
+            </div>
+          </div>
+
+          <div className="p-6 bg-gradient-to-r from-agro-950 to-agro-900 text-white rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <p className="text-xs uppercase font-bold text-emerald-300">शुद्ध निव्वळ नफा (Net Profit Formula)</p>
+              <p className="text-xs text-slate-300 mt-0.5">विक्री उत्पन्न (Revenue) - खरेदी खर्च (COGS) - दुकान खर्च (Expenses)</p>
+            </div>
+            <p className="text-3xl sm:text-4xl font-extrabold text-emerald-400">
+              ₹{kpis?.netProfit?.toLocaleString('en-IN') || '०'}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------- */}
+      {/* 8. WHATSAPP AI BOT SIMULATOR TAB */}
+      {/* ------------------------------------------------------------- */}
+      {activeTab === 'whatsapp' && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="lg:col-span-5 bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-4">
+            <h3 className="font-extrabold text-slate-900 text-sm sm:text-base flex items-center gap-2">
+              <MessageCircle className="w-4 h-4 text-emerald-600" />
+              <span>WhatsApp शेतकरी बॉट टेस्ट</span>
+            </h3>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">शेतकरी नाव</label>
+                <input
+                  type="text"
+                  value={simName}
+                  onChange={(e) => setSimName(e.target.value)}
+                  className="w-full border border-slate-300 rounded-lg p-2"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">मेसेज टाईप करा</label>
+                <textarea
+                  rows={3}
+                  value={simMessage}
+                  onChange={(e) => setSimMessage(e.target.value)}
+                  placeholder="उदा. कांदा करप्यासाठी कोणते औषध मारू?"
+                  className="w-full border border-slate-300 rounded-lg p-2 text-xs"
+                />
+              </div>
+
+              <button
+                onClick={handleSendSimMessage}
+                disabled={simLoading}
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-2.5 rounded-xl transition shadow flex items-center justify-center gap-2"
+              >
+                <Send className="w-4 h-4" />
+                <span>व्हॉट्सॲप मेसेज पाठवा</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="lg:col-span-7 bg-[#0b141a] rounded-2xl p-4 shadow-xl border border-slate-800 flex flex-col justify-between h-[450px]">
+            <div className="bg-[#202c33] p-3 rounded-xl flex items-center gap-3 text-white text-xs font-bold">
+              <div className="w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center">
+                <Sprout className="w-4 h-4 text-white" />
+              </div>
+              <div>
+                <p>श्री कृष्ण ॲग्रो सर्व्हिसेस (अधिकृत AI असिस्टंट)</p>
+                <p className="text-[10px] text-emerald-400">ऑनलाइन • २४/७ तत्पर</p>
+              </div>
+            </div>
+
+            {/* Chat Bubbles Area */}
+            <div className="space-y-3 overflow-y-auto p-2">
+              {simHistory.map((msg, i) => (
+                <div
+                  key={i}
+                  className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}
+                >
+                  <div
+                    className={`max-w-[85%] p-3 rounded-2xl text-xs leading-relaxed ${
+                      msg.role === 'user'
+                        ? 'bg-[#005c4b] text-white rounded-tr-none'
+                        : 'bg-[#202c33] text-slate-100 rounded-tl-none whitespace-pre-line'
+                    }`}
+                  >
+                    {msg.text}
+                  </div>
+                  <span className="text-[10px] text-slate-500 mt-0.5 px-1">{msg.timestamp}</span>
+                </div>
+              ))}
+              {simLoading && (
+                <div className="text-xs text-slate-400 animate-pulse">बॉट टाईप करत आहे...</div>
+              )}
+            </div>
+
+            <div className="pt-2 text-center text-[10px] text-slate-500">
+              💡 हा सिम्युलेटर प्रत्यक्ष शेतकरी व्हॉट्सॲपवर कसा संवाद साधतो ते दाखवतो.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------- */}
+      {/* 9. OWNER AI ADVISORY TAB */}
+      {/* ------------------------------------------------------------- */}
+      {activeTab === 'owner_ai' && (
+        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-5">
+          <div className="flex items-center gap-2 font-extrabold text-slate-900 text-lg">
+            <Bot className="w-5 h-5 text-agro-700" />
+            <span>दुकान मालक AI व्यवसाय सल्लागार (Owner Copilot)</span>
+          </div>
+
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={aiQuery}
+              onChange={(e) => setAiQuery(e.target.value)}
+              placeholder="उदा. सर्वाधिक नफा देणारी औषधे कोणती?"
+              className="flex-1 border border-slate-300 rounded-xl px-4 py-2.5 text-xs sm:text-sm focus:ring-1 focus:ring-agro-600"
+            />
+            <button
+              onClick={handleRunAi}
+              disabled={aiLoading}
+              className="bg-agro-800 hover:bg-agro-900 text-white font-bold px-5 py-2.5 rounded-xl text-xs transition flex items-center gap-1.5"
+            >
+              <Sparkles className="w-4 h-4 text-emerald-300" />
+              <span>{aiLoading ? 'विश्लेषण सुरू आहे...' : 'विश्लेषण करा'}</span>
+            </button>
+          </div>
+
+          {aiResponse && (
+            <div className="bg-emerald-50 border border-emerald-200 p-5 rounded-2xl space-y-3">
+              <h4 className="font-extrabold text-emerald-950 text-sm">AI विश्लेषण निष्कर्ष:</h4>
+              <p className="text-xs sm:text-sm text-emerald-900 whitespace-pre-line leading-relaxed">
+                {aiResponse.analysis}
+              </p>
+              <div className="pt-3 border-t border-emerald-200 text-xs font-bold text-emerald-950">
+                🎯 कृती शिफारस: {aiResponse.recommendation}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ============================================================= */}
+      {/* MODAL: ADD / EDIT PRODUCT */}
+      {/* ============================================================= */}
+      {productModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto space-y-5 shadow-2xl">
+            <div className="flex justify-between items-center pb-3 border-b border-slate-100">
+              <h3 className="font-extrabold text-slate-900 text-base">
+                {editingProductId ? 'उत्पादन एडिट करा' : 'नवीन कृषी औषध / खत जोडा'}
+              </h3>
+              <button
+                onClick={() => setProductModalOpen(false)}
+                className="text-slate-400 hover:text-slate-700 text-lg font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveProduct} className="space-y-4 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">मराठी नाव (Name in Marathi)*</label>
+                  <input
+                    type="text"
+                    required
+                    value={pNameMr}
+                    onChange={(e) => setPNameMr(e.target.value)}
+                    placeholder="उदा. बायर नॅटिव्हो बुरशीनाशक"
+                    className="w-full border border-slate-300 rounded-lg p-2 font-semibold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">इंग्रजी नाव (English Name)</label>
+                  <input
+                    type="text"
+                    value={pNameEn}
+                    onChange={(e) => setPNameEn(e.target.value)}
+                    placeholder="उदा. Bayer Nativo 100g"
+                    className="w-full border border-slate-300 rounded-lg p-2"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">वर्गवारी (Category)</label>
+                  <select
+                    value={pCategoryId}
+                    onChange={(e) => setPCategoryId(e.target.value)}
+                    className="w-full border border-slate-300 rounded-lg p-2 bg-white font-semibold"
+                  >
+                    {INITIAL_CATEGORIES.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.nameMr} ({c.nameEn})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">कंपनी / ब्रँड (Brand)</label>
+                  <input
+                    type="text"
+                    value={pBrandName}
+                    onChange={(e) => setPBrandName(e.target.value)}
+                    placeholder="उदा. Bayer, Syngenta, Mahadhan"
+                    className="w-full border border-slate-300 rounded-lg p-2 font-semibold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">पॅकिंग साईज (Pack Size)</label>
+                  <input
+                    type="text"
+                    value={pPackSize}
+                    onChange={(e) => setPPackSize(e.target.value)}
+                    placeholder="उदा. १ किलो बॅग, ५०० मिली बॉटल"
+                    className="w-full border border-slate-300 rounded-lg p-2"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">चालू विक्री दर (Selling Price ₹)*</label>
+                  <input
+                    type="number"
+                    required
+                    value={pSellingPrice}
+                    onChange={(e) => setPSellingPrice(Number(e.target.value))}
+                    className="w-full border border-slate-300 rounded-lg p-2 font-extrabold text-emerald-800"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">कंपनी खरेदी दर (Purchase Cost ₹)</label>
+                  <input
+                    type="number"
+                    value={pPurchasePrice}
+                    onChange={(e) => setPPurchasePrice(Number(e.target.value))}
+                    className="w-full border border-slate-300 rounded-lg p-2"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">साठा संख्या (Current Stock Quantity)*</label>
+                  <input
+                    type="number"
+                    required
+                    value={pInitialStock}
+                    onChange={(e) => setPInitialStock(Number(e.target.value))}
+                    className="w-full border border-slate-300 rounded-lg p-2 font-bold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">तांत्रिक घटक (Technical Name)</label>
+                  <input
+                    type="text"
+                    value={pTechnicalName}
+                    onChange={(e) => setPTechnicalName(e.target.value)}
+                    placeholder="उदा. Tebuconazole 50% + Trifloxystrobin 25%"
+                    className="w-full border border-slate-300 rounded-lg p-2"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">फवारणी प्रमाण (Dosage Guide)</label>
+                  <input
+                    type="text"
+                    value={pDosageGuide}
+                    onChange={(e) => setPDosageGuide(e.target.value)}
+                    placeholder="उदा. ०.५ ग्रॅम प्रति लिटर पाणी"
+                    className="w-full border border-slate-300 rounded-lg p-2"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => handleDatabaseReset('CLEAN_PRODUCTION')}
-                  className="bg-red-700 hover:bg-red-800 text-white font-bold px-4 py-2 rounded-xl transition"
+                  onClick={() => setProductModalOpen(false)}
+                  className="px-4 py-2 text-slate-600 font-bold hover:bg-slate-100 rounded-xl"
                 >
-                  🚀 स्वच्छ उत्पादन डेटाबेस सुरू करा (Purge All Demo Data)
+                  रद्द करा
                 </button>
                 <button
-                  type="button"
-                  onClick={() => handleDatabaseReset('RESET_DEMO')}
-                  className="bg-white border border-slate-300 text-slate-800 font-bold px-4 py-2 rounded-xl hover:bg-slate-50 transition"
+                  type="submit"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold px-6 py-2 rounded-xl transition shadow"
                 >
-                  🔄 सिन्नर डेमो डेटा पुन्हा लोड करा (Restore Demo Dataset)
+                  सेव्ह करा (Save Product)
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================= */}
+      {/* MODAL: COLLECT KHATA PAYMENT */}
+      {/* ============================================================= */}
+      {paymentModalOpen && selectedKhataCustomer && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl">
+            <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+              <h3 className="font-extrabold text-slate-900 text-base">शेतकरी उधारी जमा करा</h3>
+              <button onClick={() => setPaymentModalOpen(false)} className="text-slate-400 font-bold">
+                ✕
+              </button>
+            </div>
+
+            <div className="bg-amber-50 border border-amber-200 p-3 rounded-xl text-xs">
+              <p className="font-bold text-amber-950">{selectedKhataCustomer.name}</p>
+              <p className="text-amber-800">गाव: {selectedKhataCustomer.village} • फोन: {selectedKhataCustomer.phone}</p>
+              <p className="font-extrabold text-amber-950 mt-1">
+                सध्याची उधारी शिल्लक: ₹{selectedKhataCustomer.outstandingBalance}
+              </p>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">आता जमा रक्कम (₹ Amount)</label>
+                <input
+                  type="number"
+                  value={collectAmount}
+                  onChange={(e) => setCollectAmount(Number(e.target.value))}
+                  className="w-full border border-slate-300 rounded-lg p-2.5 font-extrabold text-emerald-800 text-base"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">पावती टीप (Receipt Notes)</label>
+                <input
+                  type="text"
+                  value={collectNotes}
+                  onChange={(e) => setCollectNotes(e.target.value)}
+                  placeholder="उदा. कांदा विक्री झाल्यावर रोख भरणा"
+                  className="w-full border border-slate-300 rounded-lg p-2"
+                />
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2">
+                <button
+                  onClick={() => setPaymentModalOpen(false)}
+                  className="px-4 py-2 text-slate-600 font-bold hover:bg-slate-100 rounded-xl"
+                >
+                  रद्द करा
+                </button>
+                <button
+                  onClick={handleRecordKhataPayment}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold px-5 py-2 rounded-xl transition shadow"
+                >
+                  खात्यावर जमा करा
                 </button>
               </div>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

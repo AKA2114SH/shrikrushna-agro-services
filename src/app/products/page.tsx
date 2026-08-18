@@ -3,31 +3,36 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '@/context/LanguageContext';
 import { Search, Filter, Sprout, FileText, MessageCircle, Phone, Sparkles } from 'lucide-react';
-import { Product, Category, Brand } from '@/lib/store';
+import store, { Product, Category, Brand, INITIAL_PRODUCTS, INITIAL_CATEGORIES, INITIAL_BRANDS } from '@/lib/store';
 import QuotationModal from '@/components/QuotationModal';
 
 export default function ProductsPage() {
   const { t } = useLanguage();
-  const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [brands, setBrands] = useState<Brand[]>([]);
+  // Pre-load from store directly for 100% instant rendering on GitHub Pages & offline
+  const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
+  const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
+  const [brands, setBrands] = useState<Brand[]>(INITIAL_BRANDS);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedBrand, setSelectedBrand] = useState('all');
   const [search, setSearch] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [activeProduct, setActiveProduct] = useState<Product | null>(null);
 
   useEffect(() => {
+    // Attempt API refresh if running in dynamic server environment
     fetch('/api/products')
       .then((r) => r.json())
       .then((data) => {
-        if (data.products) setProducts(data.products);
-        if (data.categories) setCategories(data.categories);
-        if (data.brands) setBrands(data.brands);
-        setLoading(false);
+        if (data.products && data.products.length > 0) setProducts(data.products);
+        if (data.categories && data.categories.length > 0) setCategories(data.categories);
+        if (data.brands && data.brands.length > 0) setBrands(data.brands);
       })
-      .catch(() => setLoading(false));
+      .catch(() => {
+        setProducts(store.getProducts());
+        setCategories(store.getCategories());
+        setBrands(store.getBrands());
+      });
   }, []);
 
   const filtered = products.filter((p) => {
@@ -56,7 +61,7 @@ export default function ProductsPage() {
             खते, कीटकनाशके, बुरशीनाशके व बियाणे कॅटलॉग
           </h1>
           <p className="text-xs sm:text-sm text-emerald-100/90 leading-relaxed">
-            सिन्नर व नाशिक भागातील पिकांसाठी (कांदा, द्राक्ष, डाळिंब, टोमॅटो) १००% अस्सल कृषी निविष्ठांचे चालू बाजारभाव व फवारणी प्रमाण.
+            सिन्नर व नाशिक परिसरासाठी चालू बाजारभाव, १००% अस्सल खात्रीशीर उत्पादने व तज्ञांची शिफारस.
           </p>
         </div>
       </div>
@@ -218,7 +223,7 @@ export default function ProductsPage() {
                       </p>
                       {p.dosageGuide && (
                         <p className="text-[11px] text-slate-600 line-clamp-2 pt-0.5">
-                          <strong className="text-slate-700">प्रमाण:</strong> {p.dosageGuide}
+                          <strong className="text-slate-700">फवारणी प्रमाण:</strong> {p.dosageGuide}
                         </p>
                       )}
                       {p.targetCrops && (
@@ -229,7 +234,7 @@ export default function ProductsPage() {
                     </div>
                   </div>
 
-                  {/* Pricing and WhatsApp/Quote Action Buttons */}
+                  {/* Pricing and Action Buttons */}
                   <div className="pt-3 border-t border-slate-100 space-y-2.5">
                     <div className="flex items-baseline justify-between">
                       <div>
@@ -241,7 +246,7 @@ export default function ProductsPage() {
                         </span>
                       </div>
                       <span className="text-[10px] bg-emerald-100 text-emerald-900 font-bold px-1.5 py-0.5 rounded">
-                        सवलत दर
+                        चालू विक्री दर
                       </span>
                     </div>
 
