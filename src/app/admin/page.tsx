@@ -34,6 +34,10 @@ import {
   Sprout,
   ArrowDownRight,
   ArrowUpRight,
+  Download,
+  Database,
+  CloudUpload,
+  UserCheck,
 } from 'lucide-react';
 import store, {
   Product,
@@ -51,12 +55,49 @@ import store, {
   INITIAL_BRANDS,
 } from '@/lib/store';
 
+// Registered Admin Users (Strict Max 2 Users Limit)
+interface AdminUser {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  pin: string;
+  passwordHash: string;
+  role: 'OWNER' | 'PARTNER';
+}
+
+const DEFAULT_ADMIN_USERS: AdminUser[] = [
+  {
+    id: 'adm-1',
+    name: 'Akash Khatale (मुख्य मालक / Solutions Architect)',
+    phone: '9373873065',
+    email: 'akash@shrikrishnaagro.in',
+    pin: '9373',
+    passwordHash: 'admin@shrikrishna',
+    role: 'OWNER',
+  },
+  {
+    id: 'adm-2',
+    name: 'Shubham Gamane (B.Sc Agri तज्ञ व भागीदार)',
+    phone: '8605620843',
+    email: 'shubham@shrikrishnaagro.in',
+    pin: '8605',
+    passwordHash: 'shubham@agro',
+    role: 'PARTNER',
+  },
+];
+
 export default function AdminPage() {
   const { t } = useLanguage();
 
-  // Authentication State — Dedicated Owner / Admin Portal
+  // Authentication State — Strict Max 2 Admin Users
+  const [adminUsers, setAdminUsers] = useState<AdminUser[]>(DEFAULT_ADMIN_USERS);
+  const [activeAdmin, setActiveAdmin] = useState<AdminUser | null>(DEFAULT_ADMIN_USERS[0]);
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(true);
-  const [adminPin, setAdminPin] = useState<string>('');
+  
+  // Login Form State
+  const [loginIdentifier, setLoginIdentifier] = useState<string>('9373873065');
+  const [loginSecret, setLoginSecret] = useState<string>('9373');
   const [authError, setAuthError] = useState<string>('');
 
   // Active Module Tab
@@ -69,9 +110,9 @@ export default function AdminPage() {
     | 'quotations'
     | 'expenses'
     | 'financials'
+    | 'backup'
     | 'whatsapp'
     | 'owner_ai'
-    | 'settings'
   >('dashboard');
 
   // Master Data State — Pre-loaded from store for 100% offline & GitHub Pages support
@@ -85,7 +126,6 @@ export default function AdminPage() {
   const [expenses, setExpenses] = useState<Expense[]>(() => store.getExpenses());
   const [movements, setMovements] = useState<StockMovement[]>(() => store.getStockMovements());
   const [profile, setProfile] = useState<BusinessProfile | null>(() => store.getProfile());
-  const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [feedback, setFeedback] = useState<string>('');
 
   // POS Billing Form State
@@ -101,7 +141,7 @@ export default function AdminPage() {
   ]);
   const [posDiscount, setPosDiscount] = useState<number>(0);
   const [posPaymentMethod, setPosPaymentMethod] = useState<'CASH' | 'UPI' | 'BANK_TRANSFER' | 'CREDIT'>('CASH');
-  const [posPaidAmount, setPosPaidAmount] = useState<number>(500); // Demo partial payment
+  const [posPaidAmount, setPosPaidAmount] = useState<number>(500);
 
   // Add/Edit Product Modal State
   const [productModalOpen, setProductModalOpen] = useState<boolean>(false);
@@ -186,7 +226,7 @@ export default function AdminPage() {
   ]);
   const [simLoading, setSimLoading] = useState<boolean>(false);
 
-  // Helper to sync state from in-memory singleton store
+  // Sync state from in-memory singleton store
   const syncStoreData = () => {
     setProducts([...store.getProducts()]);
     setCustomers([...store.getCustomers()]);
@@ -203,6 +243,108 @@ export default function AdminPage() {
   useEffect(() => {
     syncStoreData();
   }, []);
+
+  // Secure Admin Login Handler
+  const handleAdminLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    const idClean = loginIdentifier.trim().toLowerCase();
+    const secClean = loginSecret.trim();
+
+    const matchedUser = adminUsers.find(
+      (u) =>
+        (u.phone === idClean || u.email.toLowerCase() === idClean) &&
+        (u.pin === secClean || u.passwordHash === secClean)
+    );
+
+    if (matchedUser) {
+      setActiveAdmin(matchedUser);
+      setIsAdminAuthenticated(true);
+      setAuthError('');
+      setFeedback(`✅ स्वागत आहे, ${matchedUser.name}!`);
+    } else {
+      setAuthError('❌ चुकीचा मोबाईल नंबर किंवा पासवर्ड/पिन. फक्त अधिकृत २ व्यवस्थापक लॉगिन करू शकतात.');
+    }
+  };
+
+  // --- 1-CLICK BACKUP & EXPORT FUNCTIONS ---
+  const downloadCSV = (content: string, filename: string) => {
+    const blob = new Blob(['\uFEFF' + content], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setFeedback(`📥 बॅकअप फाईल "${filename}" डाऊनलोड झाली!`);
+  };
+
+  const exportKhataBackupCSV = () => {
+    const header = 'शेतकरी नाव,मोबाईल नंबर,गाव,पिके,एकूण थकबाकी उधारी (₹)\n';
+    const rows = customers
+      .map(
+        (c) =>
+          `"${c.name}","${c.phone}","${c.village}","${c.cropTypes?.join('; ') || 'कांदा'}","${c.outstandingBalance}"`
+      )
+      .join('\n');
+    downloadCSV(header + rows, `ShriKrishna_Khata_Udhari_Backup_${new Date().toISOString().slice(0, 10)}.csv`);
+  };
+
+  const exportInventoryBackupCSV = () => {
+    const header = 'उत्पादन नाव (मराठी),English Name,कंपनी,पॅकिंग,चालू विक्री दर (₹),खरेदी दर (₹),शिल्लक साठा,एकूण साठा मूल्य (₹)\n';
+    const rows = products
+      .map(
+        (p) =>
+          `"${p.nameMr}","${p.nameEn}","${p.brandName}","${p.packSize}","${p.sellingPrice}","${p.purchasePrice}","${p.totalStock} ${p.unit}","${p.totalStock * p.purchasePrice}"`
+      )
+      .join('\n');
+    downloadCSV(header + rows, `ShriKrishna_Inventory_Stock_Backup_${new Date().toISOString().slice(0, 10)}.csv`);
+  };
+
+  const exportSalesBackupCSV = () => {
+    const header = 'बिल नंबर,तारीख,शेतकरी ग्राहक,मोबाईल,एकूण बिल (₹),जमा रक्कम (₹),उधारी शिल्लक (₹),पेमेंट मार्ग\n';
+    const rows = sales
+      .map(
+        (s) =>
+          `"${s.invoiceNumber}","${new Date(s.createdAt).toLocaleDateString('mr-IN')}","${s.customerName}","${s.customerPhone || ''}","${s.grandTotal}","${s.paidAmount}","${s.balanceAmount}","${s.paymentMethod}"`
+      )
+      .join('\n');
+    downloadCSV(header + rows, `ShriKrishna_Sales_Invoices_Backup_${new Date().toISOString().slice(0, 10)}.csv`);
+  };
+
+  const exportFullJSONBackup = () => {
+    const data = {
+      backupTimestamp: new Date().toISOString(),
+      business: profile,
+      financialKPIs: kpis,
+      customers,
+      products,
+      sales,
+      purchases,
+      expenses,
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `ShriKrishna_Full_Enterprise_Backup_${new Date().toISOString().slice(0, 10)}.json`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setFeedback('📥 संपूर्ण व्यवसाय डेटाबेस सुरक्षित बॅकअप फाईल डाऊनलोड झाली!');
+  };
+
+  const sendBackupSummaryWhatsApp = () => {
+    const totalReceivable = customers.reduce((sum, c) => sum + c.outstandingBalance, 0);
+    const debtorList = customers
+      .filter((c) => c.outstandingBalance > 0)
+      .map((c) => `• ${c.name} (${c.village}): ₹${c.outstandingBalance}`)
+      .join('\n');
+
+    const msg = `📊 *श्री कृष्ण ॲग्रो सर्व्हिसेस — मासिक सुरक्षित बॅकअप व उधारी अहवाल*\n\n📅 तारीख: ${new Date().toLocaleDateString('mr-IN')}\n💰 एकूण विक्री: ₹${kpis.totalRevenue}\n💵 निव्वळ नफा: ₹${kpis.netProfit}\n⚠️ एकूण शेतकरी उधारी येणे: ₹${totalReceivable}\n\n*प्रमुख उधारी खाती:*\n${debtorList}\n\nसर्व साठा व व्यवहार सुरक्षित नोंदवले गेले आहेत.`;
+    
+    window.open(`https://wa.me/919373873065?text=${encodeURIComponent(msg)}`, '_blank');
+  };
 
   // POS Calculations
   const posSubtotal = posItems.reduce((acc, i) => acc + i.quantity * i.unitPrice, 0);
@@ -225,13 +367,12 @@ export default function AdminPage() {
       discountAmount: Number(posDiscount) || 0,
       paymentMethod: posPaymentMethod,
       paidAmount: Number(posPaidAmount) || 0,
-      createdByName: 'Shri Krishna Admin',
+      createdByName: activeAdmin?.name || 'Shri Krishna Admin',
     });
 
     if (res.success && res.sale) {
       syncStoreData();
       setFeedback(`✅ बिल #${res.sale.invoiceNumber} यशस्वीपणे तयार झाले! एकूण: ₹${res.sale.grandTotal}, जमा: ₹${res.sale.paidAmount}, उधारी शिल्लक: ₹${res.sale.balanceAmount}`);
-      // Reset items
       setPosItems([]);
       setPosDiscount(0);
       setPosPaidAmount(0);
@@ -249,7 +390,6 @@ export default function AdminPage() {
     }
 
     if (editingProductId) {
-      // Update existing product
       const existing = store.getProductById(editingProductId);
       if (existing) {
         existing.nameMr = pNameMr;
@@ -265,7 +405,6 @@ export default function AdminPage() {
         setFeedback(`✅ उत्पादन "${pNameMr}" यशस्वीपणे अपडेट झाले!`);
       }
     } else {
-      // Create new product
       const cat = store.getCategories().find((c) => c.id === pCategoryId);
       const newProd: Product = {
         id: `prod-${Date.now()}`,
@@ -299,10 +438,10 @@ export default function AdminPage() {
             expiryDate: pExpiryDate || '2027-12-31',
             purchaseCost: Number(pPurchasePrice),
             currentStock: Number(pInitialStock),
-            isDemo: true,
+            isDemo: false,
           },
         ],
-        isDemo: true,
+        isDemo: false,
         createdAt: new Date().toISOString(),
       };
 
@@ -358,7 +497,7 @@ export default function AdminPage() {
 
     if (res.success && res.purchase) {
       syncStoreData();
-      setFeedback(`✅ खरेदी नोंद यशस्वी! बिल #${res.purchase.supplierInvoiceNumber}, एकूण: ₹${res.purchase.grandTotal}, साठा वाढवला गेला.`);
+      setFeedback(`✅ खरेदी नोंद यशस्वी! बिल #${res.purchase.supplierInvoiceNumber}, एकूण: ₹${res.purchase.grandTotal}`);
     } else {
       setFeedback(`❌ त्रुटी: ${res.error}`);
     }
@@ -377,7 +516,7 @@ export default function AdminPage() {
       paymentMethod: expMethod,
       vendor: expVendor || 'इतर खर्च',
       notes: expNotes,
-      recordedByName: 'Shri Krishna Admin',
+      recordedByName: activeAdmin?.name || 'Shri Krishna Admin',
     });
 
     syncStoreData();
@@ -390,15 +529,13 @@ export default function AdminPage() {
   const handleRunAi = async () => {
     setAiLoading(true);
     try {
-      // Simulate rich agro AI analysis
       setTimeout(() => {
-        const topProds = store.getProducts().slice(0, 3);
         setAiResponse({
-          analysis: `📊 श्री कृष्ण ॲग्रो व्यवसाय विश्लेषण:\n\n• एकूण विक्री उत्पन्न: ₹${kpis?.totalRevenue?.toLocaleString('en-IN') || '१,४५,२००'}\n• निव्वळ नफा (Net Profit): ₹${kpis?.netProfit?.toLocaleString('en-IN') || '४२,३५०'}\n• कांदा पिकासाठी महाधन १९:१९:१९ व ०:५२:३४ ची सर्वाधिक मागणी आहे.\n• करपा रोगासाठी नॅटिव्हो व ॲमिस्टार टॉप चा साठा पुरेसा आहे.`,
+          analysis: `📊 श्री कृष्ण ॲग्रो व्यवसाय विश्लेषण:\n\n• एकूण विक्री उत्पन्न: ₹${kpis?.totalRevenue?.toLocaleString('en-IN')}\n• निव्वळ नफा (Net Profit): ₹${kpis?.netProfit?.toLocaleString('en-IN')}\n• कांदा पिकासाठी महाधन १९:१९:१९ व ०:५२:३४ ची सर्वाधिक मागणी आहे.\n• करपा रोगासाठी नॅटिव्हो व ॲमिस्टार टॉप चा साठा पुरेसा आहे.`,
           recommendation: 'सध्या कांदा लागवडीचा हंगाम असल्याने १९:१९:१९ व सूक्ष्म अन्नद्रव्यांचा ५० बॅग अतिरिक्त साठा ठेवण्याची शिफारस आहे.',
         });
         setAiLoading(false);
-      }, 500);
+      }, 400);
     } catch {
       setAiLoading(false);
     }
@@ -424,55 +561,72 @@ export default function AdminPage() {
     }, 400);
   };
 
-  // Owner Login Screen if not authenticated
+  // =============================================================
+  // SECURE OWNER / ADMIN LOGIN SCREEN
+  // =============================================================
   if (!isAdminAuthenticated) {
     return (
-      <div className="min-h-[80vh] flex items-center justify-center px-4 py-12">
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl p-8 max-w-md w-full space-y-6 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-agro-800 to-agro-950 text-emerald-300 flex items-center justify-center mx-auto shadow-lg">
-            <Lock className="w-8 h-8" />
-          </div>
-
-          <div className="space-y-1.5">
-            <h2 className="text-xl font-extrabold text-slate-900">
+      <div className="min-h-[85vh] flex items-center justify-center px-4 py-12 bg-slate-50">
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl p-6 sm:p-8 max-w-md w-full space-y-6">
+          <div className="text-center space-y-2">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-agro-800 to-agro-950 text-emerald-300 flex items-center justify-center mx-auto shadow-lg">
+              <Lock className="w-8 h-8" />
+            </div>
+            <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900">
               श्री कृष्ण ॲग्रो सर्व्हिसेस
             </h2>
             <p className="text-xs font-bold text-emerald-800 uppercase tracking-wider">
-              दुकान व्यवस्थापक व मालक लॉगिन (Owner Portal)
+              अधिकृत व्यवस्थापक व मालक लॉगिन (Owner Portal)
             </p>
             <p className="text-xs text-slate-500">
-              सिन्नर, जि. नाशिक • ERP, बिलिंग व नफा-तोटा डॅशबोर्ड
+              सुरक्षित ERP, इन्व्हेंटरी, बिलिंग व नफा-तोटा डॅशबोर्ड
+            </p>
+          </div>
+
+          {/* Max 2 Admins Registered Notice */}
+          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-xs text-emerald-900 space-y-1">
+            <div className="flex items-center gap-1.5 font-bold text-emerald-950">
+              <ShieldCheck className="w-4 h-4 text-emerald-600" />
+              <span>कमाल २ अधिकृत व्यवस्थापक नोंदणीकृत आहेत:</span>
+            </div>
+            <p className="text-[11px] text-emerald-800 pl-5">
+              १. आकाश खताळे (9373873065)<br />
+              २. शुभम गमाणे (8605620843)
             </p>
           </div>
 
           {authError && (
-            <div className="bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold p-2.5 rounded-xl">
+            <div className="bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold p-3 rounded-xl">
               {authError}
             </div>
           )}
 
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (adminPin === '1234' || adminPin === '9373' || !adminPin) {
-                setIsAdminAuthenticated(true);
-                setAuthError('');
-              } else {
-                setAuthError('अवैध पिन. कृपया योग्य पिन टाका.');
-              }
-            }}
-            className="space-y-4 text-left"
-          >
+          <form onSubmit={handleAdminLogin} className="space-y-4 text-xs">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                व्यवस्थापक पिन (Owner PIN)
+              <label className="block font-bold text-slate-700 mb-1">
+                नोंदणीकृत मोबाईल नंबर किंवा ईमेल
+              </label>
+              <input
+                type="text"
+                required
+                value={loginIdentifier}
+                onChange={(e) => setLoginIdentifier(e.target.value)}
+                placeholder="उदा. 9373873065"
+                className="w-full border border-slate-300 rounded-xl p-3 text-sm font-semibold focus:ring-2 focus:ring-agro-600 shadow-sm"
+              />
+            </div>
+
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">
+                पासवर्ड किंवा सुरक्षा पिन (PIN)
               </label>
               <input
                 type="password"
-                value={adminPin}
-                onChange={(e) => setAdminPin(e.target.value)}
-                placeholder="पिन टाका (उदा. 1234)"
-                className="w-full border border-slate-300 rounded-xl p-3 text-center text-lg tracking-widest font-mono focus:ring-2 focus:ring-agro-600 shadow-sm"
+                required
+                value={loginSecret}
+                onChange={(e) => setLoginSecret(e.target.value)}
+                placeholder="पासवर्ड किंवा ४-अंकी पिन"
+                className="w-full border border-slate-300 rounded-xl p-3 text-sm font-semibold focus:ring-2 focus:ring-agro-600 shadow-sm"
               />
             </div>
 
@@ -481,29 +635,32 @@ export default function AdminPage() {
               className="w-full bg-agro-800 hover:bg-agro-900 text-white font-extrabold py-3.5 rounded-xl transition shadow-md text-sm flex items-center justify-center gap-2"
             >
               <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              <span>डॅशबोर्ड उघडा (Unlock ERP)</span>
+              <span>सुरक्षित लॉगिन करा (Log In)</span>
             </button>
           </form>
 
-          <p className="text-[11px] text-slate-400">
-            💡 शेतकरी ग्राहकांसाठी कोणत्याही लॉगिनची आवश्यकता नाही. ग्राहक थेट मुख्यपृष्ठावरून उत्पादने व दर पाहू शकतात.
-          </p>
+          <div className="text-center pt-2 border-t border-slate-100 text-[11px] text-slate-400">
+            🔒 नवीन युझर नोंदणी बंद आहे (फक्त २ अधिकृत भागीदारांना प्रवेश).
+          </div>
         </div>
       </div>
     );
   }
 
+  // =============================================================
+  // AUTHENTICATED ADMIN ERP DASHBOARD
+  // =============================================================
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
       {/* Top Header */}
       <div className="bg-gradient-to-r from-agro-950 via-agro-900 to-agro-800 text-white rounded-3xl p-5 sm:p-7 shadow-agro-lg flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <div className="inline-flex items-center gap-2 bg-emerald-800/80 text-emerald-300 text-xs font-bold px-3 py-1 rounded-full border border-emerald-600/40 mb-2">
-            <ShieldCheck className="w-3.5 h-3.5" />
-            <span>श्री कृष्ण ॲग्रो सर्व्हिसेस • मुख्य व्यवस्थापन डॅशबोर्ड</span>
+            <UserCheck className="w-3.5 h-3.5" />
+            <span>लॉगिन युझर: {activeAdmin?.name}</span>
           </div>
           <h1 className="text-xl sm:text-3xl font-extrabold tracking-tight">
-            ERP, इन्व्हेंटरी, काऊंटर बिलिंग व शेतकरी उधारी व्यवस्थापन
+            श्री कृष्ण ॲग्रो — डिजिटल बिझनेस ऑपरेटिंग सिस्टम
           </h1>
           <p className="text-xs sm:text-sm text-emerald-100/90 mt-1">
             सिन्नर, जि. नाशिक • प्रोप्रा. आकाश खताळे • कृषी सल्लागार: शुभम गमाणे व जगदीश बोडके
@@ -539,7 +696,7 @@ export default function AdminPage() {
         </div>
       </div>
 
-      {/* Live Feedback Alert Toast */}
+      {/* Live Feedback Toast */}
       {feedback && (
         <div className="bg-emerald-950 border border-emerald-500 text-emerald-100 text-xs sm:text-sm font-semibold p-4 rounded-2xl flex items-center justify-between shadow-md">
           <div className="flex items-center gap-2">
@@ -561,9 +718,10 @@ export default function AdminPage() {
           { id: 'customers', label: `शेतकरी उधारी खाती (${customers.length})`, icon: Users },
           { id: 'purchases', label: 'खरेदी माल नोंद (Inward)', icon: Truck },
           { id: 'expenses', label: 'दुकान खर्च', icon: DollarSign },
-          { id: 'financials', label: 'नफा-तोटा व बॅलन्स शीट', icon: FileText },
-          { id: 'whatsapp', label: 'WhatsApp बॉट सिम्युलेटर', icon: MessageCircle },
-          { id: 'owner_ai', label: 'AI कृषी सल्लागार', icon: Bot },
+          { id: 'financials', label: 'नफा-तोटा व ताळेबंद', icon: FileText },
+          { id: 'backup', label: '१-क्लिक डेटा बॅकअप व सुरक्षा', icon: Database },
+          { id: 'whatsapp', label: 'WhatsApp बॉट टेस्ट', icon: MessageCircle },
+          { id: 'owner_ai', label: 'AI व्यवसाय सल्लागार', icon: Bot },
         ].map((tab) => {
           const Icon = tab.icon;
           return (
@@ -588,7 +746,6 @@ export default function AdminPage() {
       {/* ------------------------------------------------------------- */}
       {activeTab === 'dashboard' && (
         <div className="space-y-6">
-          {/* Key KPI Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-sm space-y-1">
               <div className="flex justify-between items-center text-slate-500 text-xs font-bold">
@@ -638,114 +795,8 @@ export default function AdminPage() {
                 {kpis?.lowStockItems?.length || 0}
               </p>
               <p className="text-[11px] text-rose-700 font-semibold">
-                तात्काळ पुनर्नोंद आवश्यक
+                पुनर्नोंद आवश्यक
               </p>
-            </div>
-          </div>
-
-          {/* Quick Actions & Recent Sales Table */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-4">
-              <div className="flex justify-between items-center">
-                <h3 className="font-extrabold text-slate-900 text-sm sm:text-base">
-                  अलिकडील काऊंटर बिले (Recent Sales)
-                </h3>
-                <button
-                  onClick={() => setActiveTab('pos')}
-                  className="text-agro-700 hover:text-agro-900 text-xs font-bold flex items-center gap-1"
-                >
-                  <span>नवीन बिल बनवा</span>
-                  <Plus className="w-3.5 h-3.5" />
-                </button>
-              </div>
-
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
-                    <tr>
-                      <th className="p-2.5">बिल #</th>
-                      <th className="p-2.5">शेतकरी नाव</th>
-                      <th className="p-2.5">एकूण बिल</th>
-                      <th className="p-2.5">जमा रक्कम</th>
-                      <th className="p-2.5">उधारी शिल्लक</th>
-                      <th className="p-2.5">स्थिती</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {sales.slice(0, 5).map((s) => (
-                      <tr key={s.id} className="hover:bg-slate-50/80">
-                        <td className="p-2.5 font-bold text-agro-900">{s.invoiceNumber}</td>
-                        <td className="p-2.5 font-semibold text-slate-800">{s.customerName}</td>
-                        <td className="p-2.5 font-bold">₹{s.grandTotal}</td>
-                        <td className="p-2.5 text-emerald-800 font-bold">₹{s.paidAmount}</td>
-                        <td className="p-2.5 text-amber-800 font-bold">₹{s.balanceAmount}</td>
-                        <td className="p-2.5">
-                          <span
-                            className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                              s.paymentStatus === 'PAID'
-                                ? 'bg-emerald-100 text-emerald-800'
-                                : s.paymentStatus === 'PARTIAL'
-                                ? 'bg-amber-100 text-amber-800'
-                                : 'bg-rose-100 text-rose-800'
-                            }`}
-                          >
-                            {s.paymentStatus === 'PAID'
-                              ? 'पूर्ण जमा'
-                              : s.paymentStatus === 'PARTIAL'
-                              ? 'अर्धे जमा'
-                              : 'उधारी'}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Quick Agro Alerts */}
-            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-4">
-              <h3 className="font-extrabold text-slate-900 text-sm">कृषी इन्व्हेंटरी सूचना</h3>
-              <div className="space-y-3 text-xs">
-                {products
-                  .filter((p) => p.totalStock <= p.minStockLevel)
-                  .map((p) => (
-                    <div key={p.id} className="p-3 rounded-xl bg-amber-50 border border-amber-200 flex justify-between items-center">
-                      <div>
-                        <p className="font-bold text-amber-950">{p.nameMr}</p>
-                        <p className="text-[11px] text-amber-800">
-                          साठा: <strong>{p.totalStock} {p.unit}</strong> (किमान मर्यादा: {p.minStockLevel})
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => {
-                          setPurItems([
-                            {
-                              productId: p.id,
-                              batchNumber: `BAT-${Date.now().toString().slice(-4)}`,
-                              mfgDate: new Date().toISOString().slice(0, 10),
-                              expiryDate: '2027-12-31',
-                              quantity: 30,
-                              unitCost: p.purchasePrice,
-                              gstRate: p.gstRate,
-                            },
-                          ]);
-                          setActiveTab('purchases');
-                        }}
-                        className="bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold px-2.5 py-1 rounded-lg"
-                      >
-                        मागणी करा
-                      </button>
-                    </div>
-                  ))}
-
-                <div className="p-3.5 bg-emerald-50 rounded-xl border border-emerald-200">
-                  <p className="font-bold text-emerald-950">💡 B.Sc Agri सल्ला टिप:</p>
-                  <p className="text-[11px] text-emerald-800 mt-1">
-                    सध्या कांद्याची लागवड सुरू असल्याने १९:१९:१९ व १२:६१:०० खतांचा नियमित खप वाढला आहे.
-                  </p>
-                </div>
-              </div>
             </div>
           </div>
         </div>
@@ -756,7 +807,6 @@ export default function AdminPage() {
       {/* ------------------------------------------------------------- */}
       {activeTab === 'pos' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Left: Product Selection for POS */}
           <div className="lg:col-span-7 bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-4">
             <div className="flex justify-between items-center">
               <h3 className="font-extrabold text-slate-900 text-sm sm:text-base flex items-center gap-2">
@@ -766,7 +816,6 @@ export default function AdminPage() {
               <span className="text-xs font-bold text-slate-500">उपलब्ध माल: {products.length}</span>
             </div>
 
-            {/* Product Quick Add Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-96 overflow-y-auto pr-1">
               {products.map((p) => (
                 <div
@@ -809,13 +858,11 @@ export default function AdminPage() {
             </div>
           </div>
 
-          {/* Right: POS Invoice & Split Payment Calculation */}
           <div className="lg:col-span-5 bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-4">
             <h3 className="font-extrabold text-slate-900 text-sm pb-2 border-b border-slate-100">
               ग्राहक व बिलाचा तपशील
             </h3>
 
-            {/* Customer Selector */}
             <div className="space-y-2 text-xs">
               <label className="block font-bold text-slate-700">शेतकरी ग्राहक निवडा</label>
               <select
@@ -839,7 +886,6 @@ export default function AdminPage() {
               </select>
             </div>
 
-            {/* Invoice Items List */}
             <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
               {posItems.map((item, idx) => {
                 const prod = products.find((p) => p.id === item.productId);
@@ -865,7 +911,6 @@ export default function AdminPage() {
               })}
             </div>
 
-            {/* Split Payment Calculation 3-Box Breakdown */}
             <div className="bg-slate-900 text-white p-4 rounded-2xl space-y-3">
               <div className="flex justify-between text-xs text-slate-300">
                 <span>उप-एकूण (Subtotal):</span>
@@ -885,7 +930,6 @@ export default function AdminPage() {
                 />
               </div>
 
-              {/* 3 Box Highlight: Grand Total, Paid Now, Khata Balance */}
               <div className="pt-2 border-t border-slate-800 grid grid-cols-3 gap-2 text-center">
                 <div className="bg-slate-800/90 p-2 rounded-xl">
                   <p className="text-[10px] text-slate-400">एकूण बिल</p>
@@ -909,7 +953,6 @@ export default function AdminPage() {
               </div>
             </div>
 
-            {/* Payment Mode & Submit Button */}
             <div className="grid grid-cols-3 gap-2 text-xs font-bold">
               {(['CASH', 'UPI', 'CREDIT'] as const).map((m) => (
                 <button
@@ -1130,7 +1173,191 @@ export default function AdminPage() {
       )}
 
       {/* ------------------------------------------------------------- */}
-      {/* 5. PURCHASES & INWARD STOCK TAB */}
+      {/* 5. 1-CLICK COMPLETE BUSINESS BACKUP & SECURITY TAB */}
+      {/* ------------------------------------------------------------- */}
+      {activeTab === 'backup' && (
+        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-6">
+          <div>
+            <h3 className="font-extrabold text-slate-900 text-lg flex items-center gap-2">
+              <Database className="w-5 h-5 text-agro-700" />
+              <span>१-क्लिक व्यवसाय डेटा बॅकअप व सुरक्षा (Cloud & WhatsApp Export)</span>
+            </h3>
+            <p className="text-xs text-slate-500 mt-1">
+              शेतकरी उधारी, जमा रक्कम, साठा व बिलिंग डेटा अत्यंत महत्त्वाचा असल्याने एका क्लिकवर सर्व एक्सेल (CSV) फाईल्स व सुरक्षित JSON बॅकअप डाऊनलोड करा.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Khata Backup */}
+            <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200 space-y-3 flex flex-col justify-between">
+              <div>
+                <div className="flex justify-between items-center text-amber-900 font-bold text-xs">
+                  <span>शेतकरी खातेवही</span>
+                  <Users className="w-4 h-4 text-amber-700" />
+                </div>
+                <p className="text-sm font-extrabold text-amber-950 mt-1">
+                  उधारी व जमा बॅकअप
+                </p>
+                <p className="text-[11px] text-amber-800 mt-0.5">
+                  सर्व {customers.length} शेतकऱ्यांची शिल्लक थकबाकी, संपर्क व गावांची यादी.
+                </p>
+              </div>
+              <button
+                onClick={exportKhataBackupCSV}
+                className="w-full bg-amber-700 hover:bg-amber-800 text-white font-bold py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-sm"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Excel (CSV) डाऊनलोड</span>
+              </button>
+            </div>
+
+            {/* Inventory Backup */}
+            <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200 space-y-3 flex flex-col justify-between">
+              <div>
+                <div className="flex justify-between items-center text-emerald-900 font-bold text-xs">
+                  <span>इन्व्हेंटरी साठा</span>
+                  <Package className="w-4 h-4 text-emerald-700" />
+                </div>
+                <p className="text-sm font-extrabold text-emerald-950 mt-1">
+                  माल साठा व किंमत बॅकअप
+                </p>
+                <p className="text-[11px] text-emerald-800 mt-0.5">
+                  सर्व {products.length} औषधे, खते, चालू दर, खरेदी किंमत व एकूण साठा मूल्य.
+                </p>
+              </div>
+              <button
+                onClick={exportInventoryBackupCSV}
+                className="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-sm"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Excel (CSV) डाऊनलोड</span>
+              </button>
+            </div>
+
+            {/* Sales Invoices Backup */}
+            <div className="p-4 rounded-2xl bg-blue-50/70 border border-blue-200 space-y-3 flex flex-col justify-between">
+              <div>
+                <div className="flex justify-between items-center text-blue-900 font-bold text-xs">
+                  <span>काऊंटर बिलिंग</span>
+                  <ShoppingCart className="w-4 h-4 text-blue-700" />
+                </div>
+                <p className="text-sm font-extrabold text-blue-950 mt-1">
+                  विक्री व पावत्या बॅकअप
+                </p>
+                <p className="text-[11px] text-blue-800 mt-0.5">
+                  सर्व {sales.length} पावत्या, जमा/उधारी विभाजन व एकूण उत्पन्न नोंद.
+                </p>
+              </div>
+              <button
+                onClick={exportSalesBackupCSV}
+                className="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-sm"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Excel (CSV) डाऊनलोड</span>
+              </button>
+            </div>
+
+            {/* Full JSON Database Snapshot */}
+            <div className="p-4 rounded-2xl bg-purple-50/70 border border-purple-200 space-y-3 flex flex-col justify-between">
+              <div>
+                <div className="flex justify-between items-center text-purple-900 font-bold text-xs">
+                  <span>संपूर्ण डेटाबेस</span>
+                  <Database className="w-4 h-4 text-purple-700" />
+                </div>
+                <p className="text-sm font-extrabold text-purple-950 mt-1">
+                  Cloud JSON स्नॅपशॉट
+                </p>
+                <p className="text-[11px] text-purple-800 mt-0.5">
+                  Google Drive / Cloud वर थेट अपलोड करण्यासाठी मास्टर डेटाबेस.
+                </p>
+              </div>
+              <button
+                onClick={exportFullJSONBackup}
+                className="w-full bg-purple-700 hover:bg-purple-800 text-white font-bold py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-sm"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>JSON बॅकअप डाऊनलोड</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Automatic WhatsApp & Google Drive Export Actions */}
+          <div className="p-5 bg-gradient-to-r from-agro-950 to-agro-900 text-white rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-emerald-300 font-bold text-sm">
+                <MessageCircle className="w-4 h-4" />
+                <span>मासिक उधारी व नफा अहवाल थेट मालकाच्या WhatsApp वर पाठवा</span>
+              </div>
+              <p className="text-xs text-slate-300">
+                आकाश खताळे (9373873065) यांच्या व्हॉट्सॲपवर सर्व थकबाकीदार शेतकऱ्यांची यादी व नफा सारांश पाठवला जातो.
+              </p>
+            </div>
+
+            <button
+              onClick={sendBackupSummaryWhatsApp}
+              className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold px-5 py-3 rounded-xl transition text-xs flex items-center gap-2 shadow-lg shrink-0"
+            >
+              <Send className="w-4 h-4" />
+              <span>WhatsApp वर बॅकअप पाठवा</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------- */}
+      {/* 6. FINANCIALS TAB */}
+      {/* ------------------------------------------------------------- */}
+      {activeTab === 'financials' && (
+        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-6">
+          <div>
+            <h3 className="font-extrabold text-slate-900 text-lg">
+              नफा-तोटा व व्यवसाय आर्थिक पत्रक (Financial Statements)
+            </h3>
+            <p className="text-xs text-slate-500">
+              श्री कृष्ण ॲग्रो सर्व्हिसेस, सिन्नर — अचूक संगणकीय नफा व ताळेबंद.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div className="bg-emerald-50 border border-emerald-200 p-5 rounded-2xl space-y-2">
+              <span className="text-xs font-bold text-emerald-800 uppercase">१. एकूण विक्री उत्पन्न</span>
+              <p className="text-2xl font-extrabold text-emerald-950">
+                ₹{kpis?.totalRevenue?.toLocaleString('en-IN') || '०'}
+              </p>
+              <p className="text-xs text-emerald-700">काऊंटर व थेट विक्रीतून जमा झालेली रक्कम</p>
+            </div>
+
+            <div className="bg-slate-50 border border-slate-200 p-5 rounded-2xl space-y-2">
+              <span className="text-xs font-bold text-slate-600 uppercase">२. विकलेल्या मालाचा खरेदी खर्च (COGS)</span>
+              <p className="text-2xl font-extrabold text-slate-900">
+                ₹{kpis?.totalCogs?.toLocaleString('en-IN') || '०'}
+              </p>
+              <p className="text-xs text-slate-500">कंपनी व सप्लायर खरेदी मूल्य</p>
+            </div>
+
+            <div className="bg-amber-50 border border-amber-200 p-5 rounded-2xl space-y-2">
+              <span className="text-xs font-bold text-amber-800 uppercase">३. दुकान खर्च (Expenses)</span>
+              <p className="text-2xl font-extrabold text-amber-950">
+                ₹{kpis?.totalExpenses?.toLocaleString('en-IN') || '०'}
+              </p>
+              <p className="text-xs text-amber-700">भाडे, पगार, वीज व इतर खर्च</p>
+            </div>
+          </div>
+
+          <div className="p-6 bg-gradient-to-r from-agro-950 to-agro-900 text-white rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <p className="text-xs uppercase font-bold text-emerald-300">शुद्ध निव्वळ नफा (Net Profit Formula)</p>
+              <p className="text-xs text-slate-300 mt-0.5">विक्री उत्पन्न (Revenue) - खरेदी खर्च (COGS) - दुकान खर्च (Expenses)</p>
+            </div>
+            <p className="text-3xl sm:text-4xl font-extrabold text-emerald-400">
+              ₹{kpis?.netProfit?.toLocaleString('en-IN') || '०'}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------- */}
+      {/* 7. PURCHASES & INWARD STOCK TAB */}
       {/* ------------------------------------------------------------- */}
       {activeTab === 'purchases' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -1228,7 +1455,7 @@ export default function AdminPage() {
       )}
 
       {/* ------------------------------------------------------------- */}
-      {/* 6. EXPENSES TAB */}
+      {/* 8. EXPENSES TAB */}
       {/* ------------------------------------------------------------- */}
       {activeTab === 'expenses' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -1326,59 +1553,7 @@ export default function AdminPage() {
       )}
 
       {/* ------------------------------------------------------------- */}
-      {/* 7. FINANCIALS & BALANCE SHEET TAB */}
-      {/* ------------------------------------------------------------- */}
-      {activeTab === 'financials' && (
-        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-6">
-          <div>
-            <h3 className="font-extrabold text-slate-900 text-lg">
-              नफा-तोटा व व्यवसाय आर्थिक पत्रक (Financial Statements)
-            </h3>
-            <p className="text-xs text-slate-500">
-              श्री कृष्ण ॲग्रो सर्व्हिसेस, सिन्नर — अचूक संगणकीय नफा व ताळेबंद.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            <div className="bg-emerald-50 border border-emerald-200 p-5 rounded-2xl space-y-2">
-              <span className="text-xs font-bold text-emerald-800 uppercase">१. एकूण विक्री उत्पन्न</span>
-              <p className="text-2xl font-extrabold text-emerald-950">
-                ₹{kpis?.totalRevenue?.toLocaleString('en-IN') || '०'}
-              </p>
-              <p className="text-xs text-emerald-700">काऊंटर व थेट विक्रीतून जमा झालेली रक्कम</p>
-            </div>
-
-            <div className="bg-slate-50 border border-slate-200 p-5 rounded-2xl space-y-2">
-              <span className="text-xs font-bold text-slate-600 uppercase">२. विकलेल्या मालाचा खरेदी खर्च (COGS)</span>
-              <p className="text-2xl font-extrabold text-slate-900">
-                ₹{kpis?.totalCogs?.toLocaleString('en-IN') || '०'}
-              </p>
-              <p className="text-xs text-slate-500">कंपनी व सप्लायर खरेदी मूल्य</p>
-            </div>
-
-            <div className="bg-amber-50 border border-amber-200 p-5 rounded-2xl space-y-2">
-              <span className="text-xs font-bold text-amber-800 uppercase">३. दुकान खर्च (Expenses)</span>
-              <p className="text-2xl font-extrabold text-amber-950">
-                ₹{kpis?.totalExpenses?.toLocaleString('en-IN') || '०'}
-              </p>
-              <p className="text-xs text-amber-700">भाडे, पगार, वीज व इतर खर्च</p>
-            </div>
-          </div>
-
-          <div className="p-6 bg-gradient-to-r from-agro-950 to-agro-900 text-white rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div>
-              <p className="text-xs uppercase font-bold text-emerald-300">शुद्ध निव्वळ नफा (Net Profit Formula)</p>
-              <p className="text-xs text-slate-300 mt-0.5">विक्री उत्पन्न (Revenue) - खरेदी खर्च (COGS) - दुकान खर्च (Expenses)</p>
-            </div>
-            <p className="text-3xl sm:text-4xl font-extrabold text-emerald-400">
-              ₹{kpis?.netProfit?.toLocaleString('en-IN') || '०'}
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* ------------------------------------------------------------- */}
-      {/* 8. WHATSAPP AI BOT SIMULATOR TAB */}
+      {/* 9. WHATSAPP AI BOT TEST TAB */}
       {/* ------------------------------------------------------------- */}
       {activeTab === 'whatsapp' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -1432,7 +1607,6 @@ export default function AdminPage() {
               </div>
             </div>
 
-            {/* Chat Bubbles Area */}
             <div className="space-y-3 overflow-y-auto p-2">
               {simHistory.map((msg, i) => (
                 <div
@@ -1464,7 +1638,7 @@ export default function AdminPage() {
       )}
 
       {/* ------------------------------------------------------------- */}
-      {/* 9. OWNER AI ADVISORY TAB */}
+      {/* 10. OWNER AI ADVISORY TAB */}
       {/* ------------------------------------------------------------- */}
       {activeTab === 'owner_ai' && (
         <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-5">
