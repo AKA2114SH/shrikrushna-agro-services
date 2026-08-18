@@ -355,23 +355,43 @@ export default function HomePage() {
                   </div>
                 </div>
 
-                {/* Price & Action Button */}
-                <div className="pt-4 mt-3 border-t border-slate-100 flex items-center justify-between">
-                  <div>
-                    <span className="text-[10px] text-slate-400 line-through">
-                      MRP ₹{p.mrp}
+                {/* Price & Action Buttons */}
+                <div className="pt-3 mt-3 border-t border-slate-100 space-y-2">
+                  <div className="flex items-baseline justify-between">
+                    <div>
+                      <span className="text-[10px] text-slate-400 line-through mr-1">
+                        MRP ₹{p.mrp}
+                      </span>
+                      <span className="text-base font-extrabold text-agro-950">
+                        ₹{p.sellingPrice}
+                      </span>
+                    </div>
+                    <span className="text-[10px] bg-emerald-50 text-emerald-800 font-bold px-1.5 py-0.5 rounded">
+                      चालू दर
                     </span>
-                    <p className="text-base font-extrabold text-agro-900">
-                      ₹{p.sellingPrice}
-                    </p>
                   </div>
-                  <button
-                    onClick={() => openQuoteForProduct(p)}
-                    className="bg-agro-700 hover:bg-agro-800 text-white text-xs font-bold px-3 py-2 rounded-lg transition flex items-center gap-1 shadow-sm"
-                  >
-                    <FileText className="w-3.5 h-3.5" />
-                    <span>{t.addToQuote}</span>
-                  </button>
+
+                  <div className="grid grid-cols-2 gap-1.5 text-xs font-bold pt-1">
+                    <button
+                      onClick={() => openQuoteForProduct(p)}
+                      className="bg-slate-100 hover:bg-slate-200 text-slate-800 py-1.5 rounded-lg transition flex items-center justify-center gap-1"
+                    >
+                      <FileText className="w-3.5 h-3.5 text-agro-700" />
+                      <span>कोटेशन</span>
+                    </button>
+
+                    <a
+                      href={`https://wa.me/918605620843?text=${encodeURIComponent(
+                        `नमस्कार, मला "${p.nameMr} (${p.packSize})" च्या दराविषयी माहिती हवी आहे.`
+                      )}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 rounded-lg transition flex items-center justify-center gap-1 shadow-sm"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" />
+                      <span>WhatsApp</span>
+                    </a>
+                  </div>
                 </div>
               </div>
             ))}
