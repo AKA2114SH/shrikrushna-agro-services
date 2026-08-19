@@ -1,11 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
+import DatabaseService from '@/lib/db-service';
 import store from '@/lib/store';
 import { getCurrentUser, checkPermission } from '@/lib/auth';
 import { logAuditEvent } from '@/lib/audit';
 
 export async function GET() {
   try {
-    const profile = store.getProfile();
+    const profile = await DatabaseService.getBusinessSettings();
     return NextResponse.json({ profile, isDemoActive: store.isDemoActive() });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'Error fetching settings' }, { status: 500 });
@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const updatedProfile = store.updateProfile(body);
+    const updatedProfile = await DatabaseService.updateBusinessSettings('business_profile', body);
 
     await logAuditEvent({
       user,

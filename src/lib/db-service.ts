@@ -1090,6 +1090,50 @@ export class DatabaseService {
       recentPurchasesCount: purchases.length,
     };
   }
+
+  // ==========================================
+  // 9. BUSINESS SETTINGS & OWNER WIZARD PERSISTENCE
+  // ==========================================
+  public static async getBusinessSettings(key = 'business_profile'): Promise<any> {
+    if (hasDatabaseUrl) {
+      try {
+        const setting = await prisma.businessSettings.findUnique({
+          where: { key },
+        });
+        if (setting) {
+          return JSON.parse(setting.valueJson);
+        }
+      } catch (err) {
+        // Fallback
+      }
+    }
+    return store.getProfile();
+  }
+
+  public static async updateBusinessSettings(key = 'business_profile', updates: any): Promise<any> {
+    if (hasDatabaseUrl) {
+      try {
+        const existing = await this.getBusinessSettings(key);
+        const merged = { ...existing, ...updates };
+        await prisma.businessSettings.upsert({
+          where: { key },
+          create: {
+            key,
+            valueJson: JSON.stringify(merged),
+            isDemo: false,
+          },
+          update: {
+            valueJson: JSON.stringify(merged),
+          },
+        });
+        store.updateProfile(merged);
+        return merged;
+      } catch (err) {
+        // Fallback
+      }
+    }
+    return store.updateProfile(updates);
+  }
 }
 
 export default DatabaseService;
