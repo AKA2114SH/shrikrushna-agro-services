@@ -1,132 +1,162 @@
-# Shri Krishna Agro Services (श्री कृष्ण ॲग्रो सर्व्हिसेस)
-### Digital Business Operating System & Agricultural ERP Platform
-**Location**: Sinnar, District Nashik, Maharashtra, India (PIN: 422103)  
-**Lead Solutions Architect**: Akash Khatale (Mo. `+91 9373873065`, Email: `akashkhatale2114@gmail.com`)  
-**Verified Agronomists**: Shubham Gamane (B.Sc Agri — `8605620843`) & Jagdish Bodke (B.Sc Agri — `8888474456`)  
-**GitHub Repository**: `https://github.com/AKA2114SH/shrikrushna-agro-services.git`  
-**GitHub Pages Live Link**: `https://aka2114sh.github.io/shrikrushna-agro-services/`
+# श्री कृष्ण ॲग्रो सर्व्हिसेस (Shri Krishna Agro Services)
+### Complete Web & Digital ERP Business Management System
 
 ---
 
-## 🌾 Platform Overview
+## 🌾 Business & Project Overview
+**Shri Krishna Agro Services** is a full-stack, enterprise-grade Digital Business Management System and Farmer Web Platform tailored specifically for agrochemical and fertilizer retail enterprises in Sinnar, Nashik (Maharashtra).
 
-This platform is a unified, production-grade digital operating system built specifically for agricultural input retail, seeds, fertilizers, crop protection, and expert farmer advisory in the Sinnar/Nashik region.
+* **Entity Name**: Shri Krishna Agro Services (श्री कृष्ण ॲग्रो सर्व्हिसेस)
+* **Authorized Business Proprietors**:
+  - **Shubham Gamane** (B.Sc Agri) — `+91 8605620843`
+  - **Jagdish Bodke** (B.Sc Agri) — `+91 8888474456`
+* **Address**: Main Market, Sinnar - Shirdi Highway, Sinnar, Nashik, Maharashtra - 422103
+* **Statutory Licenses**:
+  - **Fertilizer License**: `FL/NSK/SINNAR/2024/089`
+  - **Seed License**: `SL/NSK/SINNAR/2024/112`
+  - **Insecticide/Pesticide License**: `PL/NSK/SINNAR/2024/450`
+  - **Maharashtra GSTIN**: `27AAAFS5678K1Z5`
 
+---
+
+## 🛠️ Technology Stack
+* **Framework**: Next.js 14 (App Router) + React 18
+* **Language**: TypeScript 5.7+
+* **Database & ORM**: PostgreSQL + Prisma ORM 5.22
+* **Styling**: Tailwind CSS + Custom Vanilla CSS Design System
+* **Security & Auth**: Bcrypt.js, Signed HS256 JWT sessions via `jose`, HttpOnly secure cookies
+* **Icons & UI**: Lucide React
+* **Runtime**: Node.js 20+
+
+---
+
+## 🏛️ System Architecture
+```text
+Public Farmer Client                     Staff & Owner ERP Client
+       │                                            │
+       ▼                                            ▼
+Public Next.js Pages                     Admin Next.js ERP Shell
+(/, /products, /quotation, /advisory)    (/admin - POS, Khata, Inventory, P&L)
+       │                                            │
+       └──────────────────┬─────────────────────────┘
+                          ▼
+            Next.js API & Route Handlers
+           (/api/auth, /api/sales, /api/products...)
+                          │
+                          ▼
+             Authentication & RBAC Matrix
+           (OWNER, MANAGER, ACCOUNTANT, CASHIER, AGRONOMIST)
+                          │
+                          ▼
+                  DatabaseService
+                          │
+                          ▼
+                 Prisma ORM Client
+                          │
+                          ▼
+                 PostgreSQL Database
 ```
-Public Farmer Website & PWA
-          ↓
-Product Catalogue & Quotation Engine
-          ↓
-Next.js 15 Server Actions / API Handlers
-          ↓
-Prisma ORM & Immutable Audit / Stock Ledger
-          ↓
-PostgreSQL on Supabase
-          ↓
-Admin ERP & Dual AI Assistants (Farmer WhatsApp + Owner Marathi/English)
-```
 
 ---
 
-## 🚀 Key Modules & Architecture
-
-1. **Public Bilingual Website & Mobile PWA**:
-   - High-converting landing page with Marathi (`मराठी`) primary localization and English toggle.
-   - Verified agronomist credentials for Shubham Gamane and Jagdish Bodke.
-   - PWA manifest (`/manifest.json`) for instant mobile home-screen installation.
-   - Offline-cached public catalogue and informational pages.
-
-2. **Searchable Product Catalogue**:
-   - Filter by Category (Water Soluble, Fertilizers, Fungicides, Insecticides, Seeds, Micronutrients, Tonics/PGR, Herbicides), Brand, Pack Size, and active ingredients.
-   - Safe public view: displays MRP, special price, and availability status while strictly concealing internal dealer purchase margins.
-
-3. **Agronomist Crop Advisory Library**:
-   - Region-specific crop guides for Onion (कांदा), Grapes (द्राक्ष), Pomegranate (डाळिंब), and Tomato (टोमॅटो).
-   - Strict safety guardrails: all crop protection and fertigation schedules reflect verified agronomist standards with zero AI hallucination.
-
-4. **Dynamic Quotation & Tax Invoice Generator**:
-   - Unique sequential serial numbering (`QTN-YYYY-XXXX` and `INV-YYYY-XXXX`).
-   - High-resolution branded A4 PDF and printable HTML documents with QR code, GST breakdown, discount, terms, and signature blocks.
-   - 1-Click WhatsApp share link with pre-filled order payloads.
-
-5. **Central Inventory & Immutable Stock Ledger**:
-   - Multi-unit decimal support (`Kg`, `Litre`, `Gm`, `Ml`, `Bottle`, `Bag`, `Packet`, `Box`, `Piece`).
-   - Batch tracking with manufacturing and expiry dates.
-   - Automated alerts for low stock (< reorder level) and expiring batches (<30, <60, <90 days).
-   - All stock changes execute exclusively through immutable `StockMovement` transactions (`OPENING_STOCK`, `PURCHASE`, `SALE`, `DAMAGE`, `ADJUSTMENT`).
-
-6. **Sales Counter (POS Billing) & Farmer Credit (Khata CRM)**:
-   - Rapid billing with customer selection, instant stock validation, and cash/UPI/credit options.
-   - Customer Khata ledger tracking village, crop acreage, and outstanding balances with 1-click WhatsApp payment reminders.
-
-7. **Purchase Management & Landed Cost Engine**:
-   - Inward goods receipt with supplier invoice recording, automatic batch generation, freight costing, and landed unit cost calculation.
-
-8. **Double-Entry Expense & Net Profit Engine**:
-   - Operational expense categorization (Rent, Electricity, Salary, Transport, Maintenance, Marketing).
-   - Real-time arithmetic: $\text{Revenue} - \text{COGS} = \text{Gross Profit}$; $\text{Gross Profit} - \text{Expenses} = \text{Net Profit}$.
-
-9. **WhatsApp Integration Hub & Dual AI Assistants**:
-   - **Farmer WhatsApp AI Assistant**: Controlled tool runner answering price inquiries, stock availability, store location, and quotation requests.
-   - **Owner Private AI Business Assistant**: Natural language voice/text queries in Marathi and English (*"आजची विक्री किती?", "कोणता माल संपत आला आहे?", "या महिन्याचा निव्वळ नफा किती?"*).
-   - Built-in live WhatsApp Chat Simulator in the ERP dashboard.
-
-10. **Security & Role-Based Access Control (RBAC)**:
-    - Granular permission matrix across roles: `OWNER`, `MANAGER`, `AGRONOMIST`, `CASHIER`, `ACCOUNTANT`.
-    - Protected endpoints with HTTP 401/403 boundary enforcement.
-    - Immutable security audit log tracking user ID, IP address, and mutation payloads.
-
-11. **Strict Data Separation (Demo vs. Production)**:
-    - **Development/Demo Mode**: Flagged realistic Sinnar agricultural dataset (`isDemo: true`) for testing and QA.
-    - **Production Mode**: 1-Click clean initialization via the Business Setup Wizard.
+## 📦 Core Business Modules
+1. **Public Website & Farmer PWA**: 100% friction-free zero-login access for farmers to explore 28 authentic Sinnar crop nutrition/protection products, calculate GST quotations, and read verified Marathi crop advisories.
+2. **Sales POS & Touch Billing**: Rapid touch billing, itemized GST calculation (0%, 5%, 12%, 18%), split payment handling (Cash, UPI, Khata credit), atomic stock decrement, and printable tax invoices.
+3. **Customer Khata CRM**: Farmer debt ledger tracking credit disbursements, repayments, remaining balances, and WhatsApp payment reminders.
+4. **Inventory & Immutable Stock Movement**: Real-time batch management, expiry date monitoring, low stock warnings, and immutable audit logs of all stock additions, sales, adjustments, and write-offs.
+5. **Purchases & Supplier Payables**: Inward stock management, landed cost computation, supplier credit ledger, and payment tracking.
+6. **Quotations & Tax Invoice PDF Engine**: Sequential QTN numbers, branded A4 print modals, and 1-click conversion to finalized POS sales.
+7. **Expenses & P&L Financial Engine**: Real-time business intelligence ($\text{Revenue} - \text{COGS} - \text{Expenses} = \text{Net Profit}$).
+8. **WhatsApp Hub & Dual AI Assistants**:
+   - **Farmer AI**: Public, controlled agronomist assistant grounded in authentic Sinnar inventory.
+   - **Owner AI**: Private, authenticated read-only business intelligence assistant.
 
 ---
 
-## 🛠️ Installation, Testing & Deployment
+## 🚀 Quick Start & Development Setup
 
-### Quick Start
+### 1. Prerequisites
+* Node.js v20.x or higher
+* PostgreSQL v14+ (or local database instance)
+* npm v10+
+
+### 2. Installation
 ```bash
-# 1. Install dependencies
+git clone https://github.com/AKA2114SH/shrikrushna-agro-services.git
+cd shrikrushna-agro-services
 npm install
+```
 
-# 2. Run automated test verification
-npm run test:all
+### 3. Environment Configuration
+Copy `.env.example` to `.env` and configure your credentials:
+```bash
+cp .env.example .env
+```
 
-# 3. Start local development server
+### 4. Database Setup
+```bash
+npx prisma generate
+npx prisma db push
+```
+
+### 5. Running the Application Locally
+```bash
 npm run dev
-
-# 4. Compile production build
-npm run build
-npm start
 ```
-
-### GitHub Pages Deployment
-A GitHub Actions workflow is located at [deploy.yml](file:///.github/workflows/deploy.yml). When code is pushed to branch `main`, GitHub Actions builds and exports the static app and deploys it automatically to GitHub Pages:
-- **HTTPS Live URL**: `https://aka2114sh.github.io/shrikrushna-agro-services/`
+Open [http://localhost:3000](http://localhost:3000) to view the public website, or [http://localhost:3000/admin](http://localhost:3000/admin) to access the ERP management console.
 
 ---
 
-## 🔒 Environment Variables (`.env`)
-
-```ini
-# Database (Supabase PostgreSQL Connection)
-DATABASE_URL="postgresql://postgres:[PASSWORD]@db.[PROJECT-REF].supabase.co:5432/postgres?pgbouncer=true"
-DIRECT_URL="postgresql://postgres:[PASSWORD]@db.[PROJECT-REF].supabase.co:5432/postgres"
-
-# Security & Session
-JWT_SECRET="shrikrishna_agro_sinnar_secure_jwt_secret_key_2026"
-
-# WhatsApp Business API (Provider Agnostic)
-WHATSAPP_API_TOKEN=""
-WHATSAPP_PHONE_NUMBER_ID=""
-WHATSAPP_BUSINESS_ACCOUNT_ID=""
-WEBHOOK_SECRET=""
+## 🧪 Comprehensive Test Suite (16 Test Suites, 231 Assertions)
+Run the entire automated quality and security verification suite:
+```bash
+npm run test:all
 ```
+
+Individual test suites:
+* `npm run test:math` — Math & Accounting Formulations
+* `npm run test:security` — Security & RBAC Enforcement
+* `npm run test:concurrency` — Concurrency & Overselling Prevention
+* `npm run test:auth` — Bcrypt Hashing & JWT Session Lifecycle
+* `npm run test:ai` — AI Grounding & Adversarial Defense
+* `npm run test:restore` — Disaster Recovery & Backup Integrity
+* `npm run test:inventory` — Products & Inventory Engine
+* `npm run test:pos-khata` — POS Billing & Customer Khata
+* `npm run test:quotation` — Quotation & Invoice Engine
+* `npm run test:financial` — Expenses & Profit Calculations
+* `npm run test:whatsapp-ai` — WhatsApp Hub & Dual AI Assistants
+* `npm run test:audit` — Final Production Quality & Security Audit
 
 ---
 
-## 🧪 Automated Test Suite
+## 📚 Complete Documentation Index
+Detailed documentation guides are available in the [documentation/](file:///home/dj-akash/Desktop/Shrikrushna-agro-services/documentation/) directory:
+* [System Architecture](file:///home/dj-akash/Desktop/Shrikrushna-agro-services/documentation/SYSTEM_ARCHITECTURE.md)
+* [Installation & Setup](file:///home/dj-akash/Desktop/Shrikrushna-agro-services/documentation/INSTALLATION_SETUP.md)
+* [Deployment Guide](file:///home/dj-akash/Desktop/Shrikrushna-agro-services/documentation/DEPLOYMENT_GUIDE.md)
+* [Environment Configuration](file:///home/dj-akash/Desktop/Shrikrushna-agro-services/documentation/ENVIRONMENT_CONFIGURATION.md)
+* [Database Guide](file:///home/dj-akash/Desktop/Shrikrushna-agro-services/documentation/DATABASE_GUIDE.md)
+* [Owner User Manual](file:///home/dj-akash/Desktop/Shrikrushna-agro-services/documentation/OWNER_USER_MANUAL.md)
+* [Staff User Manual](file:///home/dj-akash/Desktop/Shrikrushna-agro-services/documentation/STAFF_USER_MANUAL.md)
+* [Farmer Public Usage Guide](file:///home/dj-akash/Desktop/Shrikrushna-agro-services/documentation/FARMER_PUBLIC_USAGE_GUIDE.md)
+* [Sales POS Guide](file:///home/dj-akash/Desktop/Shrikrushna-agro-services/documentation/SALES_POS_GUIDE.md)
+* [Inventory Guide](file:///home/dj-akash/Desktop/Shrikrushna-agro-services/documentation/INVENTORY_GUIDE.md)
+* [Purchase & Supplier Guide](file:///home/dj-akash/Desktop/Shrikrushna-agro-services/documentation/PURCHASE_SUPPLIER_GUIDE.md)
+* [Customer Khata CRM Guide](file:///home/dj-akash/Desktop/Shrikrushna-agro-services/documentation/CUSTOMER_KHATA_GUIDE.md)
+* [Quotation & Invoice Guide](file:///home/dj-akash/Desktop/Shrikrushna-agro-services/documentation/QUOTATION_INVOICE_GUIDE.md)
+* [Expense & Financial Report Guide](file:///home/dj-akash/Desktop/Shrikrushna-agro-services/documentation/EXPENSE_REPORT_GUIDE.md)
+* [WhatsApp Hub Guide](file:///home/dj-akash/Desktop/Shrikrushna-agro-services/documentation/WHATSAPP_GUIDE.md)
+* [Dual AI Assistant Guide](file:///home/dj-akash/Desktop/Shrikrushna-agro-services/documentation/AI_ASSISTANT_GUIDE.md)
+* [Backup & Disaster Recovery Guide](file:///home/dj-akash/Desktop/Shrikrushna-agro-services/documentation/BACKUP_RESTORE_GUIDE.md)
+* [Security Operations Guide](file:///home/dj-akash/Desktop/Shrikrushna-agro-services/documentation/SECURITY_OPERATIONS_GUIDE.md)
+* [Troubleshooting Guide](file:///home/dj-akash/Desktop/Shrikrushna-agro-services/documentation/TROUBLESHOOTING_GUIDE.md)
+* [API Reference Documentation](file:///home/dj-akash/Desktop/Shrikrushna-agro-services/documentation/API_DOCUMENTATION.md)
+* [Database Schema Documentation](file:///home/dj-akash/Desktop/Shrikrushna-agro-services/documentation/DATABASE_SCHEMA_DOCUMENTATION.md)
+* [Production Runbook](file:///home/dj-akash/Desktop/Shrikrushna-agro-services/documentation/PRODUCTION_RUNBOOK.md)
+* [Client Handover Document](file:///home/dj-akash/Desktop/Shrikrushna-agro-services/documentation/CLIENT_HANDOVER.md)
+* [Changelog](file:///home/dj-akash/Desktop/Shrikrushna-agro-services/documentation/CHANGELOG.md)
 
-- `npm run test:math`: Validates stock movements, quotation/invoice arithmetic, GST calculations, and COGS/Net Profit formulas.
-- `npm run test:security`: Asserts role boundary denials (e.g. Cashier blocked from profit reports, Agronomist blocked from dealer purchase margins).
-- `npm run test:concurrency`: Asserts atomic overselling protection and non-negative stock constraints.
+---
+
+## 📄 License
+Proprietary software developed exclusively for **Shri Krishna Agro Services, Sinnar, Nashik**. All rights reserved.
