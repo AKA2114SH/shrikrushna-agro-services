@@ -1,6 +1,7 @@
 import { SignJWT, jwtVerify } from 'jose';
 import bcrypt from 'bcryptjs';
 import { cookies } from 'next/headers';
+import { NextResponse } from 'next/server';
 
 export type UserRole = 'OWNER' | 'MANAGER' | 'AGRONOMIST' | 'CASHIER' | 'ACCOUNTANT';
 
@@ -172,3 +173,52 @@ export function checkPermission(role: UserRole, permission: keyof typeof ROLE_PE
   if (!perms) return false;
   return Boolean(perms[permission]);
 }
+
+export async function requireAuth(): Promise<{ user: AuthUser | null; errorResponse?: NextResponse }> {
+  const user = await getCurrentUser();
+  if (!user) {
+    return {
+      user: null,
+      errorResponse: NextResponse.json(
+        { success: false, error: { code: 'UNAUTHORIZED', message: 'Authentication is required to access this resource.' } },
+        { status: 401 }
+      ),
+    };
+  }
+  return { user };
+}
+
+export async function requirePermission(permission: keyof typeof ROLE_PERMISSIONS['OWNER']): Promise<{ user: AuthUser | null; errorResponse?: NextResponse }> {
+  const auth = await requireAuth();
+  if (auth.errorResponse || !auth.user) return auth;
+
+  if (!checkPermission(auth.user.role, permission)) {
+    return {
+      user: null,
+      errorResponse: NextResponse.json(
+        { success: false, error: { code: 'FORBIDDEN', message: 'You do not have permission to perform this action.' } },
+        { status: 403 }
+      ),
+    };
+  }
+
+  return { user: auth.user };
+}
+
+export async function requireRole(allowedRoles: UserRole[]): Promise<{ user: AuthUser | null; errorResponse?: NextResponse }> {
+  const auth = await requireAuth();
+  if (auth.errorResponse || !auth.user) return auth;
+
+  if (!allowedRoles.includes(auth.user.role)) {
+    return {
+      user: null,
+      errorResponse: NextResponse.json(
+        { success: false, error: { code: 'FORBIDDEN', message: 'Your user role is not authorized for this operation.' } },
+        { status: 403 }
+      ),
+    };
+  }
+
+  return { user: auth.user };
+}
+
