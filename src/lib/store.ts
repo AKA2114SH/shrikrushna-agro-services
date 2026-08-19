@@ -2086,6 +2086,21 @@ class BusinessStore {
     return this.suppliers.filter((s) => includeDemo || !s.isDemo);
   }
 
+  public getSupplierById(id: string): Supplier | undefined {
+    return this.suppliers.find((s) => s.id === id);
+  }
+
+  public addSupplier(s: Omit<Supplier, 'id' | 'createdAt'>): Supplier {
+    const id = `supp_${Date.now()}`;
+    const newSupp: Supplier = {
+      ...s,
+      id,
+      createdAt: new Date().toISOString(),
+    };
+    this.suppliers.unshift(newSupp);
+    return newSupp;
+  }
+
   // --- Staff & RBAC ---
   public getStaff(includeDemo = true): StaffMember[] {
     return this.staff.filter((s) => includeDemo || !s.isDemo);

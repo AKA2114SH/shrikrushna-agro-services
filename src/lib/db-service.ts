@@ -476,9 +476,64 @@ export class DatabaseService {
       }
     }
 
-    const id = `supp_${Date.now()}`;
-    const newSupp: Supplier = { ...supplierData, id, createdAt: new Date().toISOString() };
-    return newSupp;
+    return store.addSupplier(supplierData);
+  }
+
+  public static async recordSupplierPayment(
+    supplierId: string,
+    amount: number,
+    paymentMethod: string,
+    notes?: string,
+    purchaseId?: string,
+    recordedById?: string
+  ): Promise<{ success: boolean; newOutstanding?: number; error?: string }> {
+    if (hasDatabaseUrl) {
+      try {
+        const result = await prisma.$transaction(async (tx) => {
+          const supp = await tx.supplier.findUnique({ where: { id: supplierId } });
+          if (!supp) throw new Error('Supplier not found.');
+
+          const currentOutstanding = Number(supp.outstandingPayable);
+          const newOutstanding = Math.max(0, currentOutstanding - amount);
+
+          await tx.supplierPayment.create({
+            data: {
+              supplierId,
+              purchaseId: purchaseId || null,
+              amount,
+              paymentMethod: paymentMethod as any,
+              notes,
+              recordedById: recordedById || null,
+            },
+          });
+
+          await tx.supplier.update({
+            where: { id: supplierId },
+            data: {
+              outstandingPayable: newOutstanding,
+            },
+          });
+
+          return newOutstanding;
+        });
+
+        // Also sync local store
+        const storeSupp = store.getSuppliers().find((s) => s.id === supplierId);
+        if (storeSupp) {
+          storeSupp.outstandingPayable = Math.max(0, storeSupp.outstandingPayable - amount);
+        }
+
+        return { success: true, newOutstanding: result };
+      } catch (err: any) {
+        return { success: false, error: err.message || 'Supplier payment failed.' };
+      }
+    }
+
+    // In-memory fallback
+    const storeSupp = store.getSuppliers().find((s) => s.id === supplierId);
+    if (!storeSupp) return { success: false, error: 'Supplier not found.' };
+    storeSupp.outstandingPayable = Math.max(0, storeSupp.outstandingPayable - amount);
+    return { success: true, newOutstanding: storeSupp.outstandingPayable };
   }
 
   // ==========================================
