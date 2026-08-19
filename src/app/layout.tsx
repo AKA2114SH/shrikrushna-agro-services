@@ -6,6 +6,9 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import WhatsAppChatWidget from '@/components/WhatsAppChatWidget';
 
+const isGh = process.env.GITHUB_PAGES === 'true' || process.env.NEXT_EXPORT === 'true';
+const basePath = isGh ? '/shrikrushna-agro-services' : '';
+
 export const metadata: Metadata = {
   title: 'श्री कृष्ण ॲग्रो सर्व्हिसेस, सिन्नर | Shri Krishna Agro Services (Seeds, Fertilizers, Agrochemicals)',
   description:
@@ -25,7 +28,11 @@ export const metadata: Metadata = {
     'द्राक्ष औषधे नाशिक',
   ],
   authors: [{ name: 'Shri Krishna Agro Services' }, { name: 'Shubham Gamane' }, { name: 'Jagdish Bodke' }],
-  manifest: '/manifest.json',
+  manifest: `${basePath}/manifest.json`,
+  icons: {
+    icon: `${basePath}/favicon.ico`,
+    apple: `${basePath}/icon-192.png`,
+  },
   openGraph: {
     title: 'श्री कृष्ण ॲग्रो सर्व्हिसेस, सिन्नर | Shri Krishna Agro Services',
     description: 'विश्वासू कृषी निविष्ठा, बियाणे, खते व आधुनिक पीक सल्ला केंद्र, सिन्नर, नाशिक.',

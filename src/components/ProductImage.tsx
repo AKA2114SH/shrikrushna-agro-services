@@ -10,43 +10,62 @@ interface ProductImageProps {
   showBadges?: boolean;
 }
 
+const PNG_PRODUCT_IDS = new Set([
+  'prod-1',
+  'prod-5',
+  'prod-7',
+  'prod-9',
+  'prod-10',
+  'prod-11',
+  'prod-12',
+  'prod-13',
+  'prod-15',
+  'prod-23',
+]);
+
 export default function ProductImage({
   product,
   className = 'w-full h-full object-cover',
   containerClassName = 'relative w-full h-44 rounded-xl overflow-hidden bg-slate-900 shadow-inner group',
   showBadges = true,
 }: ProductImageProps) {
-  // Determine base asset prefix dynamically based on browser location or environment
-  const getAssetBase = () => {
-    if (typeof window !== 'undefined') {
-      if (window.location.pathname.startsWith('/shrikrushna-agro-services')) {
-        return '/shrikrushna-agro-services';
-      }
-    }
-    return '';
+  // Determine if we are running in GitHub Pages environment
+  const getInitialSrc = () => {
+    const isGh =
+      typeof window !== 'undefined'
+        ? window.location.pathname.startsWith('/shrikrushna-agro-services') ||
+          window.location.hostname.includes('github.io')
+        : process.env.GITHUB_PAGES === 'true' || process.env.NEXT_EXPORT === 'true';
+
+    const prefix = isGh ? '/shrikrushna-agro-services' : '';
+    const ext = PNG_PRODUCT_IDS.has(product.id) ? 'png' : 'svg';
+    return `${prefix}/products/${product.id}.${ext}`;
   };
 
-  const assetBase = getAssetBase();
-  const [currentSrc, setCurrentSrc] = useState<string>(`${assetBase}/products/${product.id}.png`);
-  const [hasError, setHasError] = useState(false);
+  const [src, setSrc] = useState<string>(getInitialSrc);
+  const [retryCount, setRetryCount] = useState<number>(0);
 
   const handleError = () => {
-    if (currentSrc.endsWith('.png')) {
-      // Fallback to SVG
-      setCurrentSrc(`${assetBase}/products/${product.id}.svg`);
-    } else if (!currentSrc.startsWith('/shrikrushna-agro-services') && !hasError) {
-      // Try with /shrikrushna-agro-services prefix
-      setCurrentSrc(`/shrikrushna-agro-services/products/${product.id}.png`);
-    } else if (!hasError) {
-      setHasError(true);
-      setCurrentSrc(`${assetBase}/products/${product.id}.svg`);
+    if (retryCount === 0 && src.endsWith('.png')) {
+      // First fallback: try SVG at same base path
+      const base = src.startsWith('/shrikrushna-agro-services') ? '/shrikrushna-agro-services' : '';
+      setSrc(`${base}/products/${product.id}.svg`);
+      setRetryCount(1);
+    } else if (retryCount === 1) {
+      // Second fallback: try alternate base path
+      if (src.startsWith('/shrikrushna-agro-services')) {
+        setSrc(`/products/${product.id}.svg`);
+      } else {
+        setSrc(`/shrikrushna-agro-services/products/${product.id}.svg`);
+      }
+      setRetryCount(2);
     }
   };
 
   return (
     <div className={containerClassName}>
       <img
-        src={currentSrc}
+        src={src}
         alt={`${product.nameMr} (${product.nameEn}) - श्री कृष्ण ॲग्रो सर्व्हिसेस सिन्नर`}
         loading="lazy"
         className={`${className} group-hover:scale-105 transition-transform duration-300`}
