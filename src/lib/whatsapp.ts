@@ -83,8 +83,9 @@ export async function processIncomingWhatsAppMessage(
 ): Promise<WhatsAppResponsePayload> {
   const msgId = payload.id || `wa_in_${Date.now()}`;
 
-  // Idempotency check: Reject duplicate messages
-  if (processedMessageIds.has(msgId)) {
+  // Persistent & In-Memory Idempotency check: Reject duplicate messages
+  const isDuplicate = processedMessageIds.has(msgId) || messageHistory.some((m) => m.id === msgId);
+  if (isDuplicate) {
     return {
       toPhone: payload.fromPhone,
       replyText: 'हा मेसेज आधीच प्रोसेस झाला आहे (Duplicate message prevented).',

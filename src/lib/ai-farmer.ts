@@ -72,8 +72,9 @@ export async function handleFarmerAIMessage({
   // [SAFETY DEFENSE 1] Prompt Injection, Secret Leakage & System Prompt Protection
   if (
     text.includes('system prompt') ||
-    text.includes('ignore previous') ||
-    text.includes('ignore all instructions') ||
+    text.includes('ignore') ||
+    text.includes('credential') ||
+    text.includes('credentials') ||
     text.includes('api key') ||
     text.includes('api_key') ||
     text.includes('secret') ||
@@ -95,7 +96,9 @@ export async function handleFarmerAIMessage({
     text.includes('purchaseprice') ||
     text.includes('खरेदी किंमत') ||
     text.includes('dealer margin') ||
-    text.includes('wholesale cost') ||
+    text.includes('margin') ||
+    text.includes('margins') ||
+    text.includes('wholesale') ||
     text.includes('cost price') ||
     text.includes('supplier price') ||
     text.includes('सप्लायर दर') ||

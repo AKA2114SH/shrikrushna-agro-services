@@ -786,7 +786,7 @@ export class DatabaseService {
                 productId: item.productId,
                 movementType: 'SALE',
                 quantity: item.quantity,
-                unitCost: item.unitPrice,
+                unitCost: dbProduct.purchasePrice,
                 referenceType: 'SALE',
                 notes: `POS Sale to ${saleData.customerName}`,
               },
