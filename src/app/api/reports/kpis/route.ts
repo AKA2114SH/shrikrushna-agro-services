@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import store from '@/lib/store';
+import DatabaseService from '@/lib/db-service';
 import { getCurrentUser, checkPermission } from '@/lib/auth';
 import { logAuditEvent } from '@/lib/audit';
 
@@ -23,7 +23,7 @@ export async function GET() {
       );
     }
 
-    const kpis = store.getFinancialKPIs();
+    const kpis = await DatabaseService.getFinancialKPIs();
     return NextResponse.json({ success: true, kpis });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'Error generating financial report' }, { status: 500 });

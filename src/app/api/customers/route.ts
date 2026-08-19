@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import store from '@/lib/store';
+import DatabaseService from '@/lib/db-service';
 import { getCurrentUser, checkPermission } from '@/lib/auth';
 import { logAuditEvent } from '@/lib/audit';
 
@@ -9,7 +9,7 @@ export async function GET() {
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    const customers = store.getCustomers();
+    const customers = await DatabaseService.getCustomers();
     return NextResponse.json({ customers });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'Failed to fetch customers' }, { status: 500 });
@@ -35,7 +35,14 @@ export async function POST(req: NextRequest) {
       if (!customerId || !amount) {
         return NextResponse.json({ error: 'Customer ID and payment amount required.' }, { status: 400 });
       }
-      const updatedCustomer = store.recordCustomerPayment(customerId, Number(amount), paymentMethod || 'CASH', notes);
+      const updatedCustomer = await DatabaseService.recordCustomerPayment(
+        customerId,
+        Number(amount),
+        paymentMethod || 'CASH',
+        notes,
+        undefined,
+        user.id
+      );
       await logAuditEvent({
         user,
         action: 'PAYMENT_RECEIVED',
@@ -47,12 +54,12 @@ export async function POST(req: NextRequest) {
     }
 
     // Action 2: Add New Customer
-    const newCustomer = store.addCustomer({
+    const newCustomer = await DatabaseService.createCustomer({
       ...customerData,
       outstandingBalance: Number(customerData.outstandingBalance || 0),
       creditLimit: Number(customerData.creditLimit || 50000),
       crops: customerData.crops || [],
-      isDemo: user.isDemo ?? store.isDemoActive(),
+      isDemo: user.isDemo ?? false,
     });
 
     await logAuditEvent({

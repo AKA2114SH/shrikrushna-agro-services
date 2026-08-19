@@ -116,8 +116,45 @@ async function runTests() {
     'Historical invoice total price remains strictly immutable'
   );
 
-  // Reset price back
-  if (prod1) prod1.sellingPrice = 190;
+  // [TEST 5] Customer Persistence & Khata Balance Decrement
+  console.log('\n[TEST 5] Customer Persistence & Khata Payment:');
+  const custBefore = store.getCustomerById('cust-1');
+  const balBefore = custBefore?.outstandingBalance || 0;
+  store.recordCustomerPayment('cust-1', 500, 'CASH', 'Test receipt');
+  const custAfter = store.getCustomerById('cust-1');
+  assert(
+    (custAfter?.outstandingBalance || 0) === balBefore - 500,
+    `Customer khata balance decrements correctly on payment (Before: ${balBefore}, After: ${custAfter?.outstandingBalance})`
+  );
+
+  // [TEST 6] Quotation Generation & Concurrency Safety
+  console.log('\n[TEST 6] Quotation Concurrency & Numbering:');
+  const q1 = store.createQuotation({
+    customerName: 'गणेश शिंदे',
+    customerPhone: '9876543210',
+    items: [{ productId: 'prod-1', quantity: 2, unitPrice: 190, gstRate: 5 }],
+  });
+  const q2 = store.createQuotation({
+    customerName: 'रमेश जाधव',
+    customerPhone: '9876543211',
+    items: [{ productId: 'prod-9', quantity: 1, unitPrice: 850, gstRate: 18 }],
+  });
+  assert(q1.quotationNumber !== q2.quotationNumber, `Quotations must have unique serial numbers (${q1.quotationNumber} !== ${q2.quotationNumber})`);
+
+  // [TEST 7] Expense Persistence
+  console.log('\n[TEST 7] Expense Persistence & Ledger:');
+  const expCountBefore = store.getExpenses().length;
+  const newExp = store.addExpense({
+    category: 'ELECTRICITY',
+    amount: 1200,
+    paymentMethod: 'UPI',
+    vendor: 'MSEB Sinnar',
+    notes: 'Shop bill',
+    expenseDate: new Date().toISOString(),
+    recordedByName: 'शुभम गमाणे',
+  });
+  assert(newExp.id.startsWith('exp_'), 'Expense created with valid ID');
+  assert(store.getExpenses().length === expCountBefore + 1, 'Expense ledger increments correctly');
 
   console.log('\n----------------------------------------');
   console.log(`🏁 PERSISTENCE & ACID TESTS COMPLETE: ${passed} Passed, ${failed} Failed\n`);

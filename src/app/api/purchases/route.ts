@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import store from '@/lib/store';
+import DatabaseService from '@/lib/db-service';
 import { getCurrentUser, checkPermission } from '@/lib/auth';
 import { logAuditEvent } from '@/lib/audit';
 
@@ -12,7 +12,7 @@ export async function GET() {
     if (!checkPermission(user.role, 'canManagePurchases')) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
-    const purchases = store.getPurchases();
+    const purchases = await DatabaseService.getPurchases();
     return NextResponse.json({ purchases });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'Failed to fetch purchases' }, { status: 500 });
@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Supplier, invoice number and purchase items are required.' }, { status: 400 });
     }
 
-    const result = store.recordPurchase({
+    const result = await DatabaseService.executePurchaseTransaction({
       supplierId,
       invoiceNumber,
       items,
@@ -62,6 +62,7 @@ export async function POST(req: NextRequest) {
       paidAmount: Number(paidAmount),
       notes,
       createdByName: `${user.name} (${user.role})`,
+      isDemo: user.isDemo ?? false,
     });
 
     if (!result.success) {
