@@ -2046,6 +2046,13 @@ class BusinessStore {
     return newProd;
   }
 
+  public updateProduct(id: string, updates: Partial<Product>): Product | null {
+    const prod = this.products.find((p) => p.id === id);
+    if (!prod) return null;
+    Object.assign(prod, updates);
+    return prod;
+  }
+
   // --- Customers & Khata ---
   public getCustomers(includeDemo = true): Customer[] {
     return this.customers.filter((c) => includeDemo || !c.isDemo);

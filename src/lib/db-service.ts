@@ -189,6 +189,90 @@ export class DatabaseService {
     return store.updateProduct(id, updates);
   }
 
+  public static async deactivateProduct(id: string): Promise<boolean> {
+    if (hasDatabaseUrl) {
+      try {
+        await prisma.product.update({
+          where: { id },
+          data: { isAvailable: false },
+        });
+      } catch (err) {
+        // Fallback
+      }
+    }
+    const res = store.updateProduct(id, { isAvailable: false });
+    return Boolean(res);
+  }
+
+  public static async adjustInventoryStock({
+    productId,
+    adjustmentQuantity,
+    movementType = 'ADJUSTMENT',
+    notes,
+    performedById,
+  }: {
+    productId: string;
+    adjustmentQuantity: number;
+    movementType?: 'OPENING_STOCK' | 'ADJUSTMENT' | 'DAMAGE' | 'EXPIRED';
+    notes?: string;
+    performedById?: string;
+  }): Promise<{ success: boolean; newStock?: number; error?: string }> {
+    if (hasDatabaseUrl) {
+      try {
+        const result = await prisma.$transaction(async (tx) => {
+          const prod = await tx.product.findUnique({ where: { id: productId } });
+          if (!prod) throw new Error('Product not found.');
+
+          const currentStock = Number(prod.totalStock);
+          const newStock = currentStock + adjustmentQuantity;
+
+          if (newStock < 0) {
+            throw new Error(`Insufficient stock. Current: ${currentStock}, Requested change: ${adjustmentQuantity}`);
+          }
+
+          await tx.product.update({
+            where: { id: productId },
+            data: { totalStock: newStock },
+          });
+
+          await tx.stockMovement.create({
+            data: {
+              productId,
+              movementType: movementType as any,
+              quantity: Math.abs(adjustmentQuantity),
+              referenceType: 'MANUAL_ADJUSTMENT',
+              notes: notes || `Manual stock adjustment (${movementType})`,
+              performedById: performedById || null,
+            },
+          });
+
+          return newStock;
+        });
+
+        // Also sync store
+        const storeProd = store.getProductById(productId);
+        if (storeProd) {
+          storeProd.totalStock = Math.max(0, storeProd.totalStock + adjustmentQuantity);
+        }
+
+        return { success: true, newStock: result };
+      } catch (err: any) {
+        return { success: false, error: err.message || 'Inventory adjustment failed.' };
+      }
+    }
+
+    // In-memory fallback
+    const storeProd = store.getProductById(productId);
+    if (!storeProd) return { success: false, error: 'Product not found.' };
+    const currentStock = storeProd.totalStock;
+    const newStock = currentStock + adjustmentQuantity;
+    if (newStock < 0) {
+      return { success: false, error: `Insufficient stock. Current: ${currentStock}, Requested change: ${adjustmentQuantity}` };
+    }
+    storeProd.totalStock = newStock;
+    return { success: true, newStock };
+  }
+
   // ==========================================
   // 2. CUSTOMERS & CRM PERSISTENCE
   // ==========================================
