@@ -5,6 +5,7 @@ import { useLanguage } from '@/context/LanguageContext';
 import { Search, Filter, Sprout, FileText, MessageCircle, Phone, Sparkles } from 'lucide-react';
 import store, { Product, Category, Brand, INITIAL_PRODUCTS, INITIAL_CATEGORIES, INITIAL_BRANDS } from '@/lib/store';
 import QuotationModal from '@/components/QuotationModal';
+import ProductImage from '@/components/ProductImage';
 
 export default function ProductsPage() {
   const { t } = useLanguage();
@@ -191,25 +192,7 @@ export default function ProductsPage() {
                 >
                   <div className="space-y-2">
                     {/* Product Visual Image Frame */}
-                    <div className="relative w-full h-44 rounded-xl overflow-hidden bg-slate-950 shadow-inner group">
-                      <img
-                        src={`/shrikrushna-agro-services/products/${p.id}.png`}
-                        alt={p.nameMr}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          if (!target.src.endsWith('.svg')) {
-                            target.src = `/shrikrushna-agro-services/products/${p.id}.svg`;
-                          }
-                        }}
-                      />
-                      <div className="absolute top-2 left-2 bg-slate-950/85 backdrop-blur-sm text-white text-[10px] font-extrabold px-2 py-0.5 rounded-md border border-white/20">
-                        {p.brandName}
-                      </div>
-                      <div className="absolute top-2 right-2 bg-emerald-600 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-md shadow-sm">
-                        {p.packSize}
-                      </div>
-                    </div>
+                    <ProductImage product={p} />
 
                     <div className="flex justify-between items-center text-[10px]">
                       <span className="bg-slate-100 text-slate-800 px-2 py-0.5 rounded font-extrabold uppercase">

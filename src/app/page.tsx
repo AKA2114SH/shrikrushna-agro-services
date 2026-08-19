@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import store, { Product, Category, INITIAL_PRODUCTS, INITIAL_CATEGORIES } from '@/lib/store';
 import QuotationModal from '@/components/QuotationModal';
+import ProductImage from '@/components/ProductImage';
 
 export default function HomePage() {
   const { t } = useLanguage();
@@ -326,25 +327,7 @@ export default function HomePage() {
               >
                 <div className="space-y-2">
                   {/* Product Visual Image Frame */}
-                  <div className="relative w-full h-44 rounded-xl overflow-hidden bg-slate-950 shadow-inner group">
-                    <img
-                      src={`/shrikrushna-agro-services/products/${p.id}.png`}
-                      alt={p.nameMr}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        if (!target.src.endsWith('.svg')) {
-                          target.src = `/shrikrushna-agro-services/products/${p.id}.svg`;
-                        }
-                      }}
-                    />
-                    <div className="absolute top-2 left-2 bg-slate-950/85 backdrop-blur-sm text-white text-[10px] font-extrabold px-2 py-0.5 rounded-md border border-white/20">
-                      {p.brandName}
-                    </div>
-                    <div className="absolute top-2 right-2 bg-emerald-600 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-md shadow-sm">
-                      {p.packSize}
-                    </div>
-                  </div>
+                  <ProductImage product={p} />
 
                   {/* Category & Availability Tag */}
                   <div className="flex justify-between items-center text-[10px]">
