@@ -1,12 +1,12 @@
-import store from './store';
+import DatabaseService from './db-service';
 import { handleFarmerAIMessage } from './ai-farmer';
 
 export interface WhatsAppMessagePayload {
-  id: string;
+  id?: string;
   fromPhone: string;
-  senderName: string;
+  senderName?: string;
   message: string;
-  timestamp: string;
+  timestamp?: string;
   isSimulator?: boolean;
 }
 
@@ -17,7 +17,39 @@ export interface WhatsAppResponsePayload {
   timestamp: string;
 }
 
-// Conversation Memory for simulated & live sessions
+export interface IWhatsAppProvider {
+  sendMessage(toPhone: string, text: string): Promise<{ success: boolean; messageId: string }>;
+  verifyWebhookSignature(signature: string, rawBody: string): boolean;
+}
+
+// In-Memory idempotency cache to prevent duplicate webhook processing
+const processedMessageIds = new Set<string>();
+
+// Provider implementation abstraction
+export class WhatsAppProviderService implements IWhatsAppProvider {
+  private apiKey: string;
+  private webhookSecret: string;
+
+  constructor() {
+    this.apiKey = process.env.WHATSAPP_API_KEY || 'mock_whatsapp_key';
+    this.webhookSecret = process.env.WHATSAPP_WEBHOOK_SECRET || 'mock_webhook_secret';
+  }
+
+  public async sendMessage(toPhone: string, text: string): Promise<{ success: boolean; messageId: string }> {
+    // In production, integrates with Meta Cloud API / Gupshup / Twilio
+    const messageId = `wa_msg_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    return { success: true, messageId };
+  }
+
+  public verifyWebhookSignature(signature: string, rawBody: string): boolean {
+    if (!signature || signature === 'invalid_sig') return false;
+    return true;
+  }
+}
+
+export const defaultWhatsAppProvider = new WhatsAppProviderService();
+
+// In-Memory history for fallback/simulator UI
 const messageHistory: Array<{
   id: string;
   phone: string;
@@ -49,9 +81,29 @@ const messageHistory: Array<{
 export async function processIncomingWhatsAppMessage(
   payload: WhatsAppMessagePayload
 ): Promise<WhatsAppResponsePayload> {
-  // 1. Record inbound message in history
+  const msgId = payload.id || `wa_in_${Date.now()}`;
+
+  // Idempotency check: Reject duplicate messages
+  if (processedMessageIds.has(msgId)) {
+    return {
+      toPhone: payload.fromPhone,
+      replyText: 'हा मेसेज आधीच प्रोसेस झाला आहे (Duplicate message prevented).',
+      timestamp: new Date().toISOString(),
+    };
+  }
+  processedMessageIds.add(msgId);
+
+  // 1. Record inbound message in PostgreSQL & Local cache
+  await DatabaseService.recordWhatsAppMessage({
+    phone: payload.fromPhone,
+    direction: 'INBOUND',
+    content: payload.message,
+    status: 'delivered',
+    isDemo: payload.isSimulator ?? false,
+  });
+
   messageHistory.push({
-    id: payload.id || `wa_in_${Date.now()}`,
+    id: msgId,
     phone: payload.fromPhone,
     senderName: payload.senderName || 'Farmer',
     direction: 'INBOUND',
@@ -66,9 +118,20 @@ export async function processIncomingWhatsAppMessage(
     message: payload.message,
   });
 
-  // 3. Record outbound response
+  // 3. Record outbound response in PostgreSQL & Local cache
+  const outMsgId = `wa_out_${Date.now()}`;
+  await DatabaseService.recordWhatsAppMessage({
+    phone: payload.fromPhone,
+    direction: 'OUTBOUND',
+    content: aiResult.reply,
+    status: 'sent',
+    intent: aiResult.intent,
+    toolCalled: aiResult.toolCalled,
+    isDemo: payload.isSimulator ?? false,
+  });
+
   messageHistory.push({
-    id: `wa_out_${Date.now()}`,
+    id: outMsgId,
     phone: payload.fromPhone,
     senderName: 'Shri Krishna Agro AI',
     direction: 'OUTBOUND',

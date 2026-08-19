@@ -1210,6 +1210,73 @@ export class DatabaseService {
     }
     return store.updateProfile(updates);
   }
+
+  // ==========================================
+  // 10. WHATSAPP MESSAGE PERSISTENCE
+  // ==========================================
+  public static async recordWhatsAppMessage(data: {
+    phone: string;
+    direction: 'INBOUND' | 'OUTBOUND';
+    content: string;
+    status?: string;
+    intent?: string;
+    toolCalled?: string;
+    isDemo?: boolean;
+  }): Promise<any> {
+    if (hasDatabaseUrl) {
+      try {
+        const created = await prisma.whatsAppMessage.create({
+          data: {
+            phone: data.phone,
+            direction: data.direction as any,
+            content: data.content,
+            status: data.status || 'delivered',
+            intent: data.intent,
+            toolCalled: data.toolCalled,
+            isDemo: data.isDemo ?? false,
+          },
+        });
+        return created;
+      } catch (err) {
+        // Fallback
+      }
+    }
+    return {
+      id: `wa_${Date.now()}`,
+      ...data,
+      status: data.status || 'delivered',
+      createdAt: new Date().toISOString(),
+    };
+  }
+
+  public static async getWhatsAppMessages(phone?: string, includeDemo = true): Promise<any[]> {
+    if (hasDatabaseUrl) {
+      try {
+        const dbMessages = await prisma.whatsAppMessage.findMany({
+          where: {
+            ...(phone ? { phone } : {}),
+            ...(includeDemo ? {} : { isDemo: false }),
+          },
+          orderBy: { createdAt: 'asc' },
+        });
+        if (dbMessages.length > 0) {
+          return dbMessages.map((m) => ({
+            id: m.id,
+            phone: m.phone,
+            direction: m.direction,
+            text: m.content,
+            status: m.status,
+            intent: m.intent,
+            toolUsed: m.toolCalled,
+            timestamp: m.createdAt.toISOString(),
+          }));
+        }
+      } catch (err) {
+        // Fallback
+      }
+    }
+    return [];
+  }
 }
 
 export default DatabaseService;

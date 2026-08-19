@@ -1,4 +1,4 @@
-import store from './store';
+import DatabaseService from './db-service';
 
 export interface OwnerAIQueryInput {
   query: string;
@@ -15,12 +15,33 @@ export async function handleOwnerAIQuery({
   query,
 }: OwnerAIQueryInput): Promise<OwnerAIQueryOutput> {
   const q = query.toLowerCase().trim();
-  const kpi = store.getFinancialKPIs();
-  const products = store.getProducts();
-  const customers = store.getCustomers();
-  const quotations = store.getQuotations();
-  const sales = store.getSales();
-  const expenses = store.getExpenses();
+
+  // [SAFETY DEFENSE 1] Mutation Prevention & Read-Only Enforcement
+  if (
+    q.includes('delete') ||
+    q.includes('drop') ||
+    q.includes('update') ||
+    q.includes('insert') ||
+    q.includes('alter') ||
+    q.includes('कमी करा') ||
+    q.includes('काढून टाका') ||
+    q.includes('बदला') ||
+    q.includes('डिलीट')
+  ) {
+    return {
+      answerMr: `⚠️ *सुरक्षा मर्यादा*: ओनर एआय असिस्टंट फक्त व्यावसायिक आकडेवारी आणि विश्लेषणासाठी (Read-Only) आहे. ईआरपी मधील डेटा बदलण्यासाठी किंवा डिलीट करण्यासाठी कृपया अधिकृत ॲडमिन स्क्रीनचा वापर करा.`,
+      answerEn: `⚠️ *Security Boundary*: Owner AI is strictly a read-only business intelligence assistant. Direct database mutations or record deletions are prohibited via AI interface.`,
+      toolUsed: 'blockDataMutation',
+      dataSummary: { error: 'MUTATION_BLOCKED' },
+    };
+  }
+
+  // Fetch live transactional data from PostgreSQL via DatabaseService
+  const kpi = await DatabaseService.getFinancialKPIs();
+  const products = await DatabaseService.getProducts(true);
+  const customers = await DatabaseService.getCustomers(true);
+  const sales = await DatabaseService.getSales(true);
+  const expenses = await DatabaseService.getExpenses(true);
 
   // 1. Sales Query (विक्री)
   if (
@@ -28,14 +49,15 @@ export async function handleOwnerAIQuery({
     q.includes('सेल') ||
     q.includes('sales') ||
     q.includes('today') ||
-    q.includes('आज')
+    q.includes('आज') ||
+    q.includes('revenue')
   ) {
-    const todaySales = sales.reduce((acc, s) => acc + s.grandTotal, 0);
+    const totalSales = sales.reduce((acc, s) => acc + s.grandTotal, 0);
     return {
-      answerMr: `📊 *आजची एकूण विक्री*: ₹${todaySales.toLocaleString('en-IN')}\n\n• रोख (Cash): ₹${kpi.cashRevenue.toLocaleString('en-IN')}\n• UPI/ऑनलाइन: ₹${kpi.upiRevenue.toLocaleString('en-IN')}\n• एकूण ऑर्डर्स/बिले: ${sales.length}`,
-      answerEn: `📊 *Total Sales Recorded*: ₹${todaySales.toLocaleString('en-IN')}\n\n• Cash: ₹${kpi.cashRevenue.toLocaleString('en-IN')}\n• UPI: ₹${kpi.upiRevenue.toLocaleString('en-IN')}\n• Total Invoices: ${sales.length}`,
+      answerMr: `📊 *एकूण नोंदवलेली विक्री*: ₹${totalSales.toLocaleString('en-IN')}\n\n• एकूण बिले (Invoices): ${sales.length}\n• सरासरी बिल आकार: ₹${sales.length > 0 ? Math.round(totalSales / sales.length).toLocaleString('en-IN') : 0}`,
+      answerEn: `📊 *Total Sales Recorded*: ₹${totalSales.toLocaleString('en-IN')}\n\n• Total Invoices: ${sales.length}\n• Average Ticket Size: ₹${sales.length > 0 ? Math.round(totalSales / sales.length).toLocaleString('en-IN') : 0}`,
       toolUsed: 'getSalesSummary',
-      dataSummary: { todaySales, cash: kpi.cashRevenue, upi: kpi.upiRevenue, count: sales.length },
+      dataSummary: { totalSales, count: sales.length },
     };
   }
 
@@ -172,8 +194,8 @@ export async function handleOwnerAIQuery({
 
   // 6. Default Business Intelligence Overview
   return {
-    answerMr: `🌾 *श्री कृष्ण ॲग्रो - बिझनेस असिस्टंट ओव्हरव्ह्यू*:\n\n• एकूण विक्री: ₹${kpi.totalRevenue.toLocaleString('en-IN')}\n• निव्वळ नफा: ₹${kpi.netProfit.toLocaleString('en-IN')}\n• शेतकरी उधारी येणे: ₹${kpi.creditOutstanding.toLocaleString('en-IN')}\n• सप्लायर देणे: ₹${kpi.supplierPayables.toLocaleString('en-IN')}\n• कमी स्टॉक अलर्ट: ${kpi.lowStockCount} आयटम्स\n\nअधिक माहितीसाठी विचारा: *"विक्री किती?", "कमी माल कोणता?", "उधारी दाखव", "नफा किती?"*`,
-    answerEn: `🌾 *Shri Krishna Agro - Business Intelligence Overview*:\n\n• Total Revenue: ₹${kpi.totalRevenue.toLocaleString('en-IN')}\n• Net Profit: ₹${kpi.netProfit.toLocaleString('en-IN')}\n• Farmer Receivables: ₹${kpi.creditOutstanding.toLocaleString('en-IN')}\n• Supplier Payables: ₹${kpi.supplierPayables.toLocaleString('en-IN')}\n• Low Stock Alerts: ${kpi.lowStockCount} items\n\nAsk me anytime about sales, inventory, net profit, or customer khata.`,
+    answerMr: `🌾 *श्री कृष्ण ॲग्रो - बिझनेस असिस्टंट ओव्हरव्ह्यू*:\n\n• एकूण विक्री: ₹${kpi.totalRevenue.toLocaleString('en-IN')}\n• निव्वळ नफा: ₹${kpi.netProfit.toLocaleString('en-IN')}\n• शेतकरी उधारी येणे: ₹${kpi.totalCustomerOutstanding.toLocaleString('en-IN')}\n• सप्लायर देणे: ₹${kpi.totalSupplierOutstanding.toLocaleString('en-IN')}\n• कमी स्टॉक अलर्ट: ${kpi.lowStockCount} आयटम्स\n\nअधिक माहितीसाठी विचारा: *"विक्री किती?", "कमी माल कोणता?", "उधारी दाखव", "नफा किती?"*`,
+    answerEn: `🌾 *Shri Krishna Agro - Business Intelligence Overview*:\n\n• Total Revenue: ₹${kpi.totalRevenue.toLocaleString('en-IN')}\n• Net Profit: ₹${kpi.netProfit.toLocaleString('en-IN')}\n• Farmer Receivables: ₹${kpi.totalCustomerOutstanding.toLocaleString('en-IN')}\n• Supplier Payables: ₹${kpi.totalSupplierOutstanding.toLocaleString('en-IN')}\n• Low Stock Alerts: ${kpi.lowStockCount} items\n\nAsk me anytime about sales, inventory, net profit, or customer khata.`,
     toolUsed: 'getGeneralBusinessOverview',
     dataSummary: kpi,
   };

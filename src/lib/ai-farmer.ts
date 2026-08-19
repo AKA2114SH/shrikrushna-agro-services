@@ -69,6 +69,61 @@ export async function handleFarmerAIMessage({
   const normalizedText = normalizeQuery(text);
   const profile = store.getProfile();
 
+  // [SAFETY DEFENSE 1] Prompt Injection, Secret Leakage & System Prompt Protection
+  if (
+    text.includes('system prompt') ||
+    text.includes('ignore previous') ||
+    text.includes('ignore all instructions') ||
+    text.includes('api key') ||
+    text.includes('api_key') ||
+    text.includes('secret') ||
+    text.includes('password') ||
+    text.includes('jwt') ||
+    text.includes('drop table') ||
+    text.includes('select * from')
+  ) {
+    return {
+      reply: `सुरक्षा नियमांनुसार अंतर्गत सिस्टिम माहिती किंवा सिक्रेट्स उघड करता येत नाहीत. आम्ही आपल्याला खते, औषधे व शेतीविषयक माहितीसाठी मदत करण्यास तयार आहोत.`,
+      toolCalled: 'rejectPromptInjection',
+      intent: 'SECURITY_VIOLATION_BLOCKED',
+    };
+  }
+
+  // [SAFETY DEFENSE 2] Confidential Dealer Margins, Purchase Costs & Wholesale Pricing Protection
+  if (
+    text.includes('purchase price') ||
+    text.includes('purchaseprice') ||
+    text.includes('खरेदी किंमत') ||
+    text.includes('dealer margin') ||
+    text.includes('wholesale cost') ||
+    text.includes('cost price') ||
+    text.includes('supplier price') ||
+    text.includes('सप्लायर दर') ||
+    text.includes('दुकानदार नफा')
+  ) {
+    return {
+      reply: `गोपनीयता धोरणानुसार अंतर्गत खरेदी किंमत किंवा डीलर मार्जिन उपलब्ध केले जात नाही. आपण दुकानातील अधिकृत किरकोळ विक्री दर (Retail Selling Price) तपासू शकता.`,
+      toolCalled: 'maskConfidentialMargins',
+      intent: 'CONFIDENTIAL_MARGIN_MASKED',
+    };
+  }
+
+  // [SAFETY DEFENSE 3] Hazardous Agrochemical / Unlicensed Chemical Cocktails Protection
+  if (
+    text.includes('विष') ||
+    text.includes('poison') ||
+    text.includes('घातक मिश्रण') ||
+    text.includes('unregistered chemical') ||
+    text.includes('overdose') ||
+    text.includes('जास्त प्रमाण')
+  ) {
+    return {
+      reply: `⚠️ *कृषी सुरक्षा सूचना*: अनधिकृत कीटकनाशक किंवा अतिप्रमाणात फवारणी पिकांसाठी अत्यंत घातक ठरू शकते. अचूक आणि सुरक्षित रासायनिक शिफारशींसाठी कृपया आमचे B.Sc Agri तज्ञ शुभम गमाणे (${profile.phonePrimary}) यांच्याशी थेट बोला.`,
+      toolCalled: 'chemicalSafetyWarning',
+      intent: 'CHEMICAL_SAFETY_REFUSAL',
+    };
+  }
+
   // 1. Greeting & Business Information
   if (
     text.includes('नमस्कार') ||
@@ -147,16 +202,12 @@ export async function handleFarmerAIMessage({
     'कॉनफिडोर',
     'confidor',
     'कांदा',
-    'onion',
-    'बियाणे',
-    'खत',
     'झिंक',
     'zinc',
     'बोरॉन',
     'boron',
     'इसाबियन',
     'isabion',
-    'खते',
   ];
 
   const matchedKeyword = productKeywords.find(
@@ -171,15 +222,16 @@ export async function handleFarmerAIMessage({
     text.includes('stock') ||
     normalizedText.includes('19:19:19')
   ) {
-    const searchTarget =
-      matchedKeyword ||
-      normalizedText.replace(/भाव|दर|price|stock|आहे का|rate|उपलब्ध/gi, '').trim();
-    const results = checkStockTool(searchTarget || '19:19:19');
+    const cleanedTarget = normalizedText
+      .replace(/भाव|दर|price|stock|आहे का|काय आहे|उपलब्ध|पाहिजे|हवे|rate/gi, '')
+      .trim();
+    const searchTarget = matchedKeyword || cleanedTarget || '19:19:19';
+    const results = checkStockTool(searchTarget);
 
     if (results && results.length > 0) {
       let replyList = `🌿 *श्री कृष्ण ॲग्रो - उत्पादन दर व उपलब्धता:*\n\n`;
       results.slice(0, 3).forEach((item, idx) => {
-        replyList += `${idx + 1}. *${item.name}* (${item.pack})\n   💰 चालू दर: ₹${item.sellingPrice} (MRP: ₹${item.mrp})\n   📦 स्थिती: ${item.isAvailable ? '✅ दुकानात उपलब्ध आहे' : '⏳ मागणीवर उपलब्ध'}\n\n`;
+        replyList += `${idx + 1}. *${item.name}* (${item.pack})\n   💰 चालू दर: ₹${item.sellingPrice} (MRP: ₹${item.mrp})\n   📦 स्थिती: ${item.isAvailable ? '✅ दुकानात उपलब्ध आहे' : '❌ शिल्लक नाही (सध्या उपलब्ध नाही)'}\n\n`;
       });
       replyList += `आपल्याला या उत्पादनांचे अधिकृत कोटेशन हवे असल्यास "कोटेशन पाठवा" असा मेसेज करा.`;
 
