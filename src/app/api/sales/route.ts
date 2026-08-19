@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import store from '@/lib/store';
 import DatabaseService from '@/lib/db-service';
 import { getCurrentUser, checkPermission } from '@/lib/auth';
 import { logAuditEvent } from '@/lib/audit';
@@ -10,7 +9,7 @@ export async function GET() {
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    const sales = store.getSales();
+    const sales = await DatabaseService.getSales();
     return NextResponse.json({ sales });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'Failed to fetch sales' }, { status: 500 });
@@ -62,7 +61,7 @@ export async function POST(req: NextRequest) {
       paidAmount: Number(paidAmount),
       notes,
       createdByName: `${user.name} (${user.role})`,
-      isDemo: user.isDemo ?? store.isDemoActive(),
+      isDemo: user.isDemo ?? false,
     });
 
     if (!result.success) {
