@@ -927,9 +927,7 @@ export class DatabaseService {
           },
         });
 
-        store.createQuotation(data);
-
-        return {
+        const formattedQuote: Quotation = {
           id: created.id,
           quotationNumber: created.quotationNumber,
           customerName: created.customerName,
@@ -960,12 +958,90 @@ export class DatabaseService {
           isDemo: created.isDemo,
           createdAt: created.createdAt.toISOString(),
         };
+
+        store.addQuotation(formattedQuote);
+        return formattedQuote;
       } catch (err) {
         // Fallback
       }
     }
 
     return store.createQuotation(data);
+  }
+
+  public static async updateQuotationStatus(idOrNumber: string, status: 'DRAFT' | 'SENT' | 'ACCEPTED' | 'REJECTED' | 'EXPIRED' | 'CONVERTED'): Promise<boolean> {
+    if (hasDatabaseUrl) {
+      try {
+        await prisma.quotation.updateMany({
+          where: {
+            OR: [{ id: idOrNumber }, { quotationNumber: idOrNumber }],
+          },
+          data: { status },
+        });
+      } catch (err) {
+        // Fallback
+      }
+    }
+    const q = store.getQuotations().find((item) => item.id === idOrNumber || item.quotationNumber === idOrNumber);
+    if (q) {
+      q.status = status;
+      return true;
+    }
+    return false;
+  }
+
+  public static async convertQuotationToSale({
+    quotationIdOrNumber,
+    paymentMethod = 'CASH',
+    paidAmount,
+    createdByName,
+  }: {
+    quotationIdOrNumber: string;
+    paymentMethod?: 'CASH' | 'UPI' | 'CREDIT' | 'BANK_TRANSFER';
+    paidAmount?: number;
+    createdByName?: string;
+  }): Promise<{ success: boolean; sale?: Sale; error?: string }> {
+    const quotations = await this.getQuotations(true);
+    const quotation = quotations.find(
+      (q) => q.id === quotationIdOrNumber || q.quotationNumber === quotationIdOrNumber
+    );
+
+    if (!quotation) {
+      return { success: false, error: 'Quotation not found.' };
+    }
+
+    if (quotation.status === 'CONVERTED') {
+      return { success: false, error: 'Quotation has already been converted to a sale (Duplicate conversion prevented).' };
+    }
+
+    // Call authoritative Step 7 sales transaction
+    const saleResult = await this.executeSaleTransaction({
+      customerId: quotation.customerId,
+      customerName: quotation.customerName,
+      customerPhone: quotation.customerPhone,
+      customerVillage: quotation.customerVillage,
+      items: quotation.items.map((it) => ({
+        productId: it.productId,
+        quantity: it.quantity,
+        unitPrice: it.unitPrice,
+        gstRate: it.gstRate,
+      })),
+      discountAmount: quotation.discountAmount || 0,
+      paymentMethod,
+      paidAmount: paidAmount !== undefined ? paidAmount : quotation.grandTotal,
+      notes: `Converted from Quotation ${quotation.quotationNumber}`,
+      createdByName: createdByName || quotation.createdByName,
+      isDemo: quotation.isDemo,
+    });
+
+    if (!saleResult.success) {
+      return { success: false, error: saleResult.error || 'Failed to convert quotation to sale.' };
+    }
+
+    // Update quotation status to CONVERTED
+    await this.updateQuotationStatus(quotation.id, 'CONVERTED');
+
+    return { success: true, sale: saleResult.sale };
   }
 
   // ==========================================

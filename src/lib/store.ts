@@ -2122,6 +2122,11 @@ class BusinessStore {
     return this.quotations.filter((q) => includeDemo || !q.isDemo);
   }
 
+  public addQuotation(q: Quotation): Quotation {
+    this.quotations.unshift(q);
+    return q;
+  }
+
   public createQuotation(q: Partial<Quotation> & {
     customerName: string;
     customerPhone: string;
